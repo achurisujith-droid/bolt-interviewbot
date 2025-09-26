@@ -1,0 +1,395 @@
+import { ResumeAnalysis } from '../types/interview';
+
+const AI_CONFIG = {
+  OPENAI_API_KEY: import.meta.env.VITE_OPENAI_API_KEY || '',
+  OPENAI_MODEL: 'gpt-4o',
+};
+
+// Analyze resume text using GPT-4o
+export const analyzeResume = async (resumeText: string, position: string): Promise<ResumeAnalysis> => {
+  if (!AI_CONFIG.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is required for resume analysis. Please add VITE_OPENAI_API_KEY to your .env file.');
+  }
+
+  // Basic validation - check if text has minimum content
+  if (resumeText.trim().length < 200) {
+    throw new Error('Resume text is too short. Please ensure you have copied the complete resume content.');
+  }
+
+  // Check for common resume indicators (more flexible)
+  const resumeIndicators = [
+    'experience', 'work', 'education', 'skills', 'project', 'company', 
+    'university', 'college', 'degree', 'certification', 'employment',
+    'job', 'position', 'role', 'responsibilities', 'achievements',
+    'technologies', 'tools', 'programming', 'development', 'engineer',
+    'manager', 'analyst', 'specialist', 'coordinator', 'director'
+  ];
+  
+  const lowerText = resumeText.toLowerCase();
+  const foundIndicators = resumeIndicators.filter(indicator => 
+    lowerText.includes(indicator)
+  );
+  
+  if (foundIndicators.length < 3) {
+    throw new Error('This text does not appear to be a professional resume. Please ensure you have copied your complete resume content including work experience, education, and skills.');
+  }
+
+  // Truncate resume text if too long (keep within token limits)
+  const maxResumeLength = 6000; // Approximately 1500 tokens
+  const truncatedResumeText = resumeText.length > maxResumeLength 
+    ? resumeText.substring(0, maxResumeLength) + '...[truncated]'
+    : resumeText;
+
+  const analysisPrompt = `
+PRIORITY: Analyze the RESUME CONTENT first, ignore job title if it doesn't match resume.
+
+**Resume Text:**
+${truncatedResumeText}
+
+**Mentioned Position:** ${position} (ignore if not matching resume content)
+
+Extract ACTUAL information from resume content:
+{
+  "actualRole": "what role this person actually has based on resume",
+  "skills": ["actual technical skills from resume"],
+  "experience": ["specific work experiences with companies/projects"],
+  "education": ["actual degrees/certifications"],
+  "projects": ["real projects mentioned"],
+  "companies": ["companies worked at"],
+  "technologies": ["specific technologies/tools used"],
+  "strengths": ["clear strengths from experience"],
+  "gaps": ["areas needing improvement for growth"],
+  "yearsOfExperience": <number>,
+  "keyTechnologies": ["main technologies from resume"],
+  "seniority": "junior/mid/senior based on experience"
+}
+
+Focus on RESUME CONTENT, not job title. Be factual and specific.
+`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AI_CONFIG.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: AI_CONFIG.OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a resume analyzer. Respond only with valid JSON.'
+          },
+          {
+            role: 'user',
+            content: analysisPrompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 800,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('OpenAI API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Resume analysis API error: ${errorMessage}`);
+    }
+
+    const result = await response.json();
+    let content = result.choices[0].message.content;
+    
+    // Strip markdown code blocks if present
+    if (content.startsWith('```json')) {
+      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (content.startsWith('```')) {
+      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    const analysis = JSON.parse(content);
+    
+    return {
+      actualRole: analysis.actualRole || position,
+      skills: analysis.skills || [],
+      experience: analysis.experience || [],
+      education: analysis.education || [],
+      projects: analysis.projects || [],
+      companies: analysis.companies || [],
+      technologies: analysis.technologies || [],
+      strengths: analysis.strengths || [],
+      gaps: analysis.gaps || [],
+      yearsOfExperience: analysis.yearsOfExperience || 0,
+      keyTechnologies: analysis.keyTechnologies || [],
+      seniority: analysis.seniority || 'mid'
+    };
+  } catch (error) {
+    console.error('Resume analysis failed:', error);
+    throw new Error(`Resume analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+// Generate customized questions based on resume analysis
+export const generateResumeBasedQuestions = async (
+  resumeAnalysis: ResumeAnalysis, 
+  position: string
+): Promise<any[]> => {
+  if (!AI_CONFIG.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is required for question generation. Please add VITE_OPENAI_API_KEY to your .env file.');
+  }
+
+  const questionPrompt = `
+PRIORITY: Generate questions based on ACTUAL RESUME CONTENT, not job title.
+
+**Resume Analysis:**
+- Actual Role: ${resumeAnalysis.actualRole || 'Not specified'}
+- Experience: ${resumeAnalysis.yearsOfExperience} years (${resumeAnalysis.seniority} level)
+- Key Skills: ${resumeAnalysis.skills.slice(0, 8).join(', ')}
+- Technologies: ${resumeAnalysis.keyTechnologies.slice(0, 6).join(', ')}
+- Companies: ${resumeAnalysis.companies?.slice(0, 3).join(', ') || 'Not specified'}
+- Projects: ${resumeAnalysis.projects.slice(0, 3).join(', ')}
+
+**Job Title Mentioned:** ${position} (use only if matches resume)
+
+Generate 7 PERSONALIZED questions that:
+1. Test depth of knowledge in their ACTUAL technologies
+2. Ask about SPECIFIC companies/projects mentioned
+3. Validate claims made in resume
+4. Match their experience level (${resumeAnalysis.seniority})
+5. Explore their real work experience
+
+Example for FPGA engineer with 5 years:
+- "Tell me about your FPGA development experience at [specific company]"
+- "Explain a complex FPGA design challenge you solved"
+- "How do you approach timing closure in FPGA designs?"
+
+Return JSON:
+[
+  {
+    "id": "q1",
+    "text": "Specific question about their actual experience",
+    "category": "technical/behavioral/experience",
+    "difficulty": "easy/medium/hard based on their level",
+    "resumeContext": "Which part of resume this validates"
+  }
+]
+
+Make questions SPECIFIC to their background, not generic.
+`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AI_CONFIG.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: AI_CONFIG.OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'Create interview questions. Respond only with valid JSON array.'
+          },
+          {
+            role: 'user',
+            content: questionPrompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('OpenAI API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Question generation API error: ${errorMessage}`);
+    }
+
+    const result = await response.json();
+    let content = result.choices[0].message.content;
+    
+    // Strip markdown code blocks if present
+    if (content.startsWith('```json')) {
+      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (content.startsWith('```')) {
+      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    const questions = JSON.parse(content);
+    return questions;
+  } catch (error) {
+    console.error('Question generation failed:', error);
+    throw new Error(`Question generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+// Generate follow-up questions based on previous response
+export const generateFollowUpQuestion = async (
+  originalQuestion: string,
+  candidateResponse: string,
+  resumeAnalysis: ResumeAnalysis,
+  position: string
+): Promise<any | null> => {
+  if (!AI_CONFIG.OPENAI_API_KEY) {
+    return null; // No follow-ups without API key
+  }
+
+  // Truncate long responses to stay within token limits
+  const maxResponseLength = 500;
+  const truncatedResponse = candidateResponse.length > maxResponseLength
+    ? candidateResponse.substring(0, maxResponseLength) + '...'
+    : candidateResponse;
+
+  const followUpPrompt = `
+Analyze if this response needs deeper exploration:
+
+**Original Question:** ${originalQuestion}
+**Candidate Response:** ${truncatedResponse}
+**Their Background:** ${resumeAnalysis.actualRole}, ${resumeAnalysis.yearsOfExperience} years
+**Key Technologies:** ${resumeAnalysis.keyTechnologies.slice(0, 4).join(', ')}
+
+Criteria for follow-up:
+- Response too vague/generic
+- Claims specific experience but lacks detail
+- Mentions technology from resume but shallow explanation
+- Senior level candidate giving junior-level answer
+
+If follow-up needed (be selective):
+{
+  "needsFollowUp": true,
+  "question": {
+    "id": "followup-${Date.now()}",
+    "text": "Specific follow-up to dig deeper",
+    "category": "technical/behavioral",
+    "difficulty": "based on their level",
+    "isFollowUp": true,
+    "resumeContext": "What needs clarification"
+  }
+}
+
+If response is adequate:
+{
+  "needsFollowUp": false
+}
+
+Only ask follow-ups for important gaps, not every response.
+`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AI_CONFIG.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: AI_CONFIG.OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'Decide if follow-up question needed. Respond only with valid JSON.'
+          },
+          {
+            role: 'user',
+            content: followUpPrompt
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 400,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('OpenAI API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Follow-up generation API error: ${errorMessage}`);
+    }
+
+    const result = await response.json();
+    let content = result.choices[0].message.content;
+    
+    // Strip markdown code blocks if present
+    if (content.startsWith('```json')) {
+      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (content.startsWith('```')) {
+      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    const followUpData = JSON.parse(content);
+    return followUpData.needsFollowUp ? followUpData.question : null;
+  } catch (error) {
+    console.error('Follow-up generation failed:', error);
+    return null; // No follow-ups on error
+  }
+};
+
+// Mock functions for fallback
+const mockAnalyzeResume = (resumeText: string, position: string): ResumeAnalysis => {
+  const words = resumeText.toLowerCase().split(/\s+/);
+  
+  const commonSkills = ['javascript', 'python', 'java', 'react', 'node.js', 'sql', 'git', 'aws'];
+  const foundSkills = commonSkills.filter(skill => 
+    words.some(word => word.includes(skill.toLowerCase()))
+  );
+
+  return {
+    skills: foundSkills.length > 0 ? foundSkills : ['Programming', 'Problem Solving'],
+    experience: ['Software Development', 'Team Collaboration'],
+    education: ['Computer Science'],
+    projects: ['Web Applications', 'Database Systems'],
+    strengths: ['Technical Skills', 'Communication'],
+    gaps: ['Advanced Architecture', 'Leadership Experience'],
+    yearsOfExperience: Math.floor(Math.random() * 8) + 2,
+    keyTechnologies: foundSkills.slice(0, 3)
+  };
+};
+
+const mockGenerateQuestions = (resumeAnalysis: ResumeAnalysis, position: string): any[] => {
+  return [
+    {
+      id: 'resume-q1',
+      text: `Tell me about your experience with ${resumeAnalysis.keyTechnologies[0] || 'the technologies'} mentioned in your resume.`,
+      category: 'technical',
+      difficulty: 'medium',
+      resumeContext: 'Technical skills validation'
+    },
+    {
+      id: 'resume-q2',
+      text: `You have ${resumeAnalysis.yearsOfExperience} years of experience. What's been your most challenging project?`,
+      category: 'behavioral',
+      difficulty: 'medium',
+      resumeContext: 'Experience depth'
+    }
+  ];
+};
+
+const mockGenerateFollowUp = (originalQuestion: string, response: string): any | null => {
+  if (response.length < 50) {
+    return {
+      id: `followup-${Date.now()}`,
+      text: 'Can you provide more specific details about that?',
+      category: 'general',
+      difficulty: 'easy',
+      isFollowUp: true,
+      resumeContext: 'Seeking more detail'
+    };
+  }
+  return null;
+};
