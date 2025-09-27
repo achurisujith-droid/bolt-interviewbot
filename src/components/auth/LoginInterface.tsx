@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Bot, Users, Shield, ArrowRight, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Bot, Users, Shield, ArrowRight, Eye, EyeOff, Mail, Lock, Briefcase } from 'lucide-react';
 
 interface LoginInterfaceProps {
-  onLogin: (user: any, type: 'admin' | 'jobseeker') => void;
+  onLogin: (user: any, type: 'admin' | 'jobseeker' | 'recruiter') => void;
 }
 
 export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
-  const [loginType, setLoginType] = useState<'admin' | 'jobseeker'>('jobseeker');
+  const [loginType, setLoginType] = useState<'admin' | 'jobseeker' | 'recruiter'>('jobseeker');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +32,7 @@ export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
     setIsLoading(false);
   };
 
-  const handleDemoLogin = (type: 'admin' | 'jobseeker') => {
+  const handleDemoLogin = (type: 'admin' | 'jobseeker' | 'recruiter') => {
     const demoUsers = {
       admin: {
         id: 'admin-demo',
@@ -45,6 +45,15 @@ export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
         name: 'John Candidate',
         email: 'john@example.com',
         type: 'jobseeker'
+      },
+      recruiter: {
+        id: 'recruiter-demo',
+        name: 'Sarah Recruiter',
+        email: 'sarah@recruitco.com',
+        type: 'recruiter',
+        company: 'RecuitCo Inc.',
+        referralCode: 'SARAH2024',
+        commissionRate: 20
       }
     };
 
@@ -75,7 +84,7 @@ export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {/* Jobseeker Login */}
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
             <div className="text-center mb-6">
@@ -104,6 +113,39 @@ export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
               >
                 <Users className="w-5 h-5 mr-2" />
                 Enter as Job Seeker
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </button>
+            </div>
+          </div>
+
+          {/* Recruiter Login */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Briefcase className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Recruiters</h2>
+              <p className="text-gray-300">Refer candidates and earn commissions</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <h3 className="text-white font-semibold mb-2">💰 Earning potential:</h3>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  <li>• 20% commission on all referrals</li>
+                  <li>• Track candidate progress and success</li>
+                  <li>• Monthly earnings reports</li>
+                  <li>• Referral link management tools</li>
+                  <li>• Performance analytics dashboard</li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => handleDemoLogin('recruiter')}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center"
+              >
+                <Briefcase className="w-5 h-5 mr-2" />
+                Enter as Recruiter
                 <ArrowRight className="w-5 h-5 ml-2" />
               </button>
             </div>
@@ -144,7 +186,7 @@ export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
         </div>
 
         {/* Features Showcase */}
-        <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="mt-16 grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <div className="text-center">
             <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Bot className="w-6 h-6 text-white" />
@@ -168,11 +210,19 @@ export const LoginInterface: React.FC<LoginInterfaceProps> = ({ onLogin }) => {
             <h3 className="text-lg font-semibold text-white mb-2">Enterprise Ready</h3>
             <p className="text-gray-400 text-sm">Azure App Service deployment ready</p>
           </div>
+          
+          <div className="text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Recruiter Network</h3>
+            <p className="text-gray-400 text-sm">Earn commissions on referrals</p>
+          </div>
         </div>
 
         <div className="mt-12 text-center">
           <p className="text-gray-400 text-sm">
-            🚀 Ready for Azure App Service • 🤖 Powered by OpenAI GPT-4o • 🏆 Instant Certification
+            🚀 Ready for Azure App Service • 🤖 Powered by OpenAI GPT-4o • 🏆 Instant Certification • 💰 Recruiter Commissions
           </p>
         </div>
       </div>

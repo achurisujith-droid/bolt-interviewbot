@@ -1,24 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { User, Award, Clock, TrendingUp, BookOpen, LogOut, Calendar, Star, Target, Users, Filter, Search, Bell, Settings, BarChart3, Trophy, Zap, CheckCircle, ArrowRight, Play, Briefcase, GraduationCap } from 'lucide-react';
+import { User, Award, Clock, TrendingUp, BookOpen, LogOut, Calendar, Star, Target, Users, Filter, Search, Bell, Settings, BarChart3, Trophy, Zap, CheckCircle, ArrowRight, Play, Briefcase, GraduationCap, Upload } from 'lucide-react';
 import { OfferingsGrid } from './OfferingsGrid';
 import { InterviewScheduler } from './InterviewScheduler';
-import { InterviewOffering, InterviewSchedule } from '../../types/offerings';
-import { defaultOfferings } from '../../data/offerings';
+import { ProductPurchaseModal } from './ProductPurchaseModal';
+import { InterviewProduct, InterviewSchedule, UserPurchase } from '../../types/products';
+import { interviewProducts } from '../../data/products';
+import { ResumeUpload } from '../ResumeUpload';
+import { InterviewInterface } from '../InterviewInterface';
+import { EvaluationInterface } from '../EvaluationInterface';
+import { analyzeResume } from '../../utils/resumeAnalyzer';
+import { InterviewSession, InterviewResponse, ResumeAnalysis } from '../../types/interview';
 
 interface JobseekerDashboardProps {
   user: any;
   onLogout: () => void;
-  onStartInterview: () => void;
 }
 
 export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   user,
-  onLogout,
-  onStartInterview
+  onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedOffering, setSelectedOffering] = useState<InterviewOffering | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<InterviewProduct | null>(null);
   const [showScheduler, setShowScheduler] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [showInterview, setShowInterview] = useState(false);
+  const [showEvaluation, setShowEvaluation] = useState(false);
+  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
+  const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [userPurchases, setUserPurchases] = useState<UserPurchase[]>([]);
+  const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
   const [userStats, setUserStats] = useState({
     completedInterviews: 3,
     averageScore: 78,
@@ -33,24 +45,219 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     { type: 'certificate', title: 'Frontend Developer Certificate', date: '1 week ago' }
   ]);
 
-  const handleSelectOffering = (offering: InterviewOffering) => {
-    setSelectedOffering(offering);
-    setShowScheduler(true);
+  // Load user purchases from localStorage
+  useEffect(() => {
+    const savedPurchases = localStorage.getItem(`userPurchases_${user.id}`);
+    if (savedPurchases) {
+      try {
+        const purchases = JSON.parse(savedPurchases).map((p: any) => ({
+          ...p,
+          purchasedAt: new Date(p.purchasedAt),
+          expiresAt: p.expiresAt ? new Date(p.expiresAt) : undefined,
+          usedAt: p.usedAt ? new Date(p.usedAt) : undefined
+        }));
+        setUserPurchases(purchases);
+      } catch (error) {
+        console.error('Failed to load user purchases:', error);
+      }
+    }
+  }, [user.id]);
+
+  // Save purchases to localStorage
+  useEffect(() => {
+    localStorage.setItem(`userPurchases_${user.id}`, JSON.stringify(userPurchases));
+  }, [userPurchases, user.id]);
+
+  const handleSelectProduct = (product: InterviewProduct) => {
+    setSelectedProduct(product);
+    
+    // Check if user has purchased this product
+    const hasPurchased = userPurchases.some(purchase => 
+      purchase.productId === product.id && 
+      (purchase.status === 'active' || purchase.status === 'used')
+    );
+    
+    if (hasPurchased) {
+      // Start interview directly
+      handleStartInterview(product);
+    } else {
+      // Show purchase modal
+      setShowPurchaseModal(true);
+    }
+  };
+
+  const handlePurchase = (paymentData: any) => {
+    // Create purchase record
+    const purchase: UserPurchase = {
+      id: `purchase-${Date.now()}`,
+      userId: user.id,
+      productId: selectedProduct!.id,
+      paymentId: paymentData.id,
+      status: 'active',
+      purchasedAt: new Date()
+    };
+    
+    setUserPurchases(prev => [...prev, purchase]);
+    setShowPurchaseModal(false);
+    
+    // Start interview immediately after purchase
+    handleStartInterview(selectedProduct!);
+  };
+
+  const handleStartInterview = (product: InterviewProduct) => {
+    // Check if resume is needed for personalized questions
+    if (!resumeAnalysis && product.resumeRequirements && product.resumeRequirements.length > 0) {
+      setShowResumeUpload(true);
+      return;
+    }
+    
+    // Create interview session
+    const session: InterviewSession = {
+      id: `session-${Date.now()}`,
+      candidateName: user.name,
+      candidateEmail: user.email,
+      position: product.name,
+      status: 'in-progress',
+      createdAt: new Date(),
+      responses: [],
+      resumeAnalysis: resumeAnalysis || undefined,
+      interviewType: product.type === 'video' ? 'video' : 'audio'
+    };
+    
+    setCurrentSession(session);
+    setShowInterview(true);
+  };
+
+  const handleResumeUploaded = async (resumeText: string) => {
+    setIsAnalyzingResume(true);
+    try {
+      const analysis = await analyzeResume(resumeText, selectedProduct?.name || 'General Position');
+      setResumeAnalysis(analysis);
+      setShowResumeUpload(false);
+      
+      // Now start the interview with resume analysis
+      if (selectedProduct) {
+        handleStartInterview(selectedProduct);
+      }
+    } catch (error) {
+      console.error('Resume analysis failed:', error);
+      alert('Resume analysis failed. Starting with standard questions.');
+      setShowResumeUpload(false);
+      if (selectedProduct) {
+        handleStartInterview(selectedProduct);
+      }
+    } finally {
+      setIsAnalyzingResume(false);
+    }
+  };
+
+  const handleSkipResume = () => {
+    setShowResumeUpload(false);
+    if (selectedProduct) {
+      handleStartInterview(selectedProduct);
+    }
+  };
+
+  const handleInterviewComplete = (responses: InterviewResponse[]) => {
+    if (currentSession) {
+      const updatedSession: InterviewSession = {
+        ...currentSession,
+        responses,
+        status: 'completed',
+        completedAt: new Date()
+      };
+      
+      setCurrentSession(updatedSession);
+      setShowInterview(false);
+      setShowEvaluation(true);
+    }
+  };
+
+  const handleEvaluationComplete = (updatedSession: InterviewSession, certificate: any) => {
+    // Mark purchase as used
+    if (selectedProduct) {
+      setUserPurchases(prev => prev.map(purchase => 
+        purchase.productId === selectedProduct.id && purchase.status === 'active'
+          ? { ...purchase, status: 'used', usedAt: new Date(), sessionId: updatedSession.id }
+          : purchase
+      ));
+    }
+    
+    // Update user stats
+    setUserStats(prev => ({
+      ...prev,
+      completedInterviews: prev.completedInterviews + 1,
+      certificatesEarned: prev.certificatesEarned + 1
+    }));
+    
+    // Reset state
+    setShowEvaluation(false);
+    setCurrentSession(null);
+    setSelectedProduct(null);
+    setActiveTab('dashboard');
+    
+    alert(`🎉 Interview completed! Score: ${updatedSession.score}%`);
   };
 
   const handleSchedule = (schedule: Omit<InterviewSchedule, 'id' | 'createdAt'>) => {
     console.log('Scheduled interview:', schedule);
     setShowScheduler(false);
-    setSelectedOffering(null);
+    setSelectedProduct(null);
     // In real app, this would save to backend
     alert(`✅ Interview scheduled for ${schedule.scheduledAt.toLocaleString()}`);
   };
 
-  const handleStartNow = () => {
+  const handleStartNow = (product: InterviewProduct) => {
     setShowScheduler(false);
-    setSelectedOffering(null);
-    onStartInterview();
+    setSelectedProduct(null);
+    handleStartInterview(product);
   };
+
+  // Loading state for resume analysis
+  if (isAnalyzingResume) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Your Resume</h2>
+          <p className="text-gray-600">AI is creating personalized questions for you...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Resume upload modal
+  if (showResumeUpload) {
+    return (
+      <ResumeUpload
+        onResumeUploaded={handleResumeUploaded}
+        onSkip={handleSkipResume}
+      />
+    );
+  }
+
+  // Interview interface
+  if (showInterview && currentSession) {
+    return (
+      <InterviewInterface
+        sessionId={currentSession.id}
+        candidateName={currentSession.candidateName}
+        position={currentSession.position}
+        resumeAnalysis={currentSession.resumeAnalysis}
+        onComplete={handleInterviewComplete}
+      />
+    );
+  }
+
+  // Evaluation interface
+  if (showEvaluation && currentSession) {
+    return (
+      <EvaluationInterface
+        session={currentSession}
+        onEvaluationComplete={handleEvaluationComplete}
+      />
+    );
+  }
 
   const renderDashboard = () => (
     <div className="space-y-8">
@@ -113,7 +320,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
       {/* Quick Actions */}
       <div className="grid md:grid-cols-3 gap-6">
         <div 
-          onClick={() => setActiveTab('interviews')}
+          onClick={() => setActiveTab('products')}
           className="group bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 cursor-pointer border border-gray-100 hover:border-blue-200"
         >
           <div className="flex items-center justify-between mb-4">
@@ -123,7 +330,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
           </div>
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Start New Interview</h3>
-          <p className="text-gray-600 text-sm">Choose from 10+ specialized assessments</p>
+          <p className="text-gray-600 text-sm">Choose from premium interview products</p>
         </div>
 
         <div 
@@ -264,7 +471,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
                 <div className="flex items-baseline space-x-4">
                   {[
                     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-                    { id: 'interviews', label: 'Interviews', icon: BookOpen },
+                    { id: 'products', label: 'Interview Products', icon: BookOpen },
                     { id: 'schedule', label: 'Schedule', icon: Calendar },
                     { id: 'certificates', label: 'Certificates', icon: Award },
                     { id: 'profile', label: 'Profile', icon: User }
@@ -314,9 +521,11 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'interviews' && (
+        {activeTab === 'products' && (
           <OfferingsGrid 
-            onSelectOffering={handleSelectOffering}
+            onSelectOffering={handleSelectProduct}
+            resumeAnalysis={resumeAnalysis}
+            userPurchases={userPurchases}
           />
         )}
         {activeTab === 'schedule' && (
@@ -343,15 +552,32 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
       </main>
 
       {/* Interview Scheduler Modal */}
-      {showScheduler && selectedOffering && (
+      {showScheduler && selectedProduct && (
         <InterviewScheduler
-          offering={selectedOffering}
+          offering={selectedProduct}
           onSchedule={handleSchedule}
-          onStartNow={handleStartNow}
+          onStartNow={() => handleStartNow(selectedProduct)}
           onCancel={() => {
             setShowScheduler(false);
-            setSelectedOffering(null);
+            setSelectedProduct(null);
           }}
+        />
+      )}
+
+      {/* Purchase Modal */}
+      {showPurchaseModal && selectedProduct && (
+        <ProductPurchaseModal
+          product={selectedProduct}
+          onPurchase={handlePurchase}
+          onStartTest={() => {
+            setShowPurchaseModal(false);
+            handleStartInterview(selectedProduct);
+          }}
+          onClose={() => {
+            setShowPurchaseModal(false);
+            setSelectedProduct(null);
+          }}
+          resumeAnalysis={resumeAnalysis}
         />
       )}
     </div>

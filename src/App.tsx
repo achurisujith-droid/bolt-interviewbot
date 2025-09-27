@@ -2,23 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { InterviewInterface } from './components/InterviewInterface';
 import { EvaluationInterface } from './components/EvaluationInterface';
 import { AdminDashboard } from './components/AdminDashboard';
-import { ResumeUpload } from './components/ResumeUpload';
 import { JobseekerDashboard } from './components/jobseeker/JobseekerDashboard';
+import { RecruiterPortal } from './components/recruiter/RecruiterPortal';
 import { LoginInterface } from './components/auth/LoginInterface';
 import { InterviewSession, Certificate, InterviewResponse, ResumeAnalysis } from './types/interview';
-import { analyzeResume } from './utils/resumeAnalyzer';
+import { Recruiter } from './types/products';
 
-type AppState = 'login' | 'admin' | 'jobseeker' | 'resume-upload' | 'interview' | 'evaluation';
+type AppState = 'login' | 'admin' | 'jobseeker' | 'recruiter';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('login');
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [userType, setUserType] = useState<'admin' | 'jobseeker' | null>(null);
+  const [userType, setUserType] = useState<'admin' | 'jobseeker' | 'recruiter' | null>(null);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -113,19 +111,8 @@ function App() {
         window.history.replaceState({}, document.title, window.location.pathname);
         setAppState('login');
       } else {
-        // Create new session or use existing pending session
-        const newSession: InterviewSession = existingSession || {
-          id: sessionId,
-          candidateName,
-          candidateEmail,
-          position,
-          status: 'pending',
-          createdAt: new Date(),
-          responses: [],
-          interviewType: 'audio'
-        };
-        setCurrentSession(newSession);
-        setAppState('resume-upload');
+        // For URL-based interviews, redirect to login and let them choose user type
+        setAppState('login');
       }
     }
     
@@ -238,76 +225,7 @@ function App() {
     return `${baseUrl}?${params.toString()}`;
   };
 
-  const handleResumeUploaded = async (resumeText: string, interviewType?: 'audio' | 'video') => {
-    if (!currentSession) return;
-    
-    setIsAnalyzingResume(true);
-    try {
-      const resumeAnalysis = await analyzeResume(resumeText, currentSession.position);
-      
-      const updatedSession: InterviewSession = {
-        ...currentSession,
-        resumeText,
-        resumeAnalysis,
-        status: 'in-progress',
-        interviewType: 'audio'
-      };
-      
-      setCurrentSession(updatedSession);
-      setSessions(prev => {
-        // Remove any existing session with same ID first
-        const filtered = prev.filter(s => s.id !== updatedSession.id);
-        return [...filtered, updatedSession];
-      });
-      
-      setAppState('interview');
-    } catch (error) {
-      console.error('Resume analysis failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Full error details:', error);
-      
-      let userMessage = `❌ Resume analysis failed: ${errorMessage}\n\n`;
-      
-      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
-        userMessage += '🔑 Issue: Invalid or missing OpenAI API key\n';
-        userMessage += '📝 Solution: Check your .env file and ensure VITE_OPENAI_API_KEY is correct';
-      } else if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
-        userMessage += '⏰ Issue: Rate limit exceeded\n';
-        userMessage += '📝 Solution: Wait a moment and try again';
-      } else if (errorMessage.includes('insufficient_quota')) {
-        userMessage += '💳 Issue: OpenAI account has insufficient credits\n';
-        userMessage += '📝 Solution: Add credits to your OpenAI account';
-      } else {
-        userMessage += '📝 Please ensure your OpenAI API key is configured correctly in the .env file';
-      }
-      
-      alert(userMessage);
-      setIsAnalyzingResume(false);
-    } finally {
-      setIsAnalyzingResume(false);
-    }
-  };
-
-  const handleSkipResume = () => {
-    if (!currentSession) return;
-    
-    const updatedSession: InterviewSession = {
-      ...currentSession,
-      status: 'in-progress',
-      interviewType: 'audio'
-    };
-
-    setCurrentSession(updatedSession);
-    setSessions(prev => {
-      // Remove any existing session with same ID first
-      const filtered = prev.filter(s => s.id !== updatedSession.id);
-      return [...filtered, updatedSession];
-    });
-    
-    setAppState('interview');
-  };
-
-  const handleLogin = (user: any, type: 'admin' | 'jobseeker') => {
+  const handleLogin = (user: any, type: 'admin' | 'jobseeker' | 'recruiter') => {
     setCurrentUser(user);
     setUserType(type);
     setAppState(type);
@@ -319,119 +237,44 @@ function App() {
     setAppState('login');
   };
 
-  const handleStartJobseekerInterview = () => {
-    setAppState('resume-upload');
-  };
-
-  const handleInterviewComplete = (responses: InterviewResponse[]) => {
-    if (currentSession) {
-      const updatedSession: InterviewSession = {
-        ...currentSession,
-        responses,
-        status: 'completed',
-        completedAt: new Date()
-      };
-      
-      setCurrentSession(updatedSession);
-      setSessions(prev => {
-        // Remove any existing session with same ID first
-        const filtered = prev.filter(s => s.id !== updatedSession.id);
-        const updated = [...filtered, updatedSession];
-        return updated;
-      });
-      
-      setAppState('evaluation');
-    }
-  };
-
-  const handleEvaluationComplete = (updatedSession: InterviewSession, certificate: Certificate) => {
-    // Update sessions
-    setSessions(prev => {
-      // Remove any existing session with same ID first
-      const filtered = prev.filter(s => s.id !== updatedSession.id);
-      const updated = [...filtered, updatedSession];
-      return updated;
-    });
-    
-    // Add certificate
-    setCertificates(prev => {
-      // Remove any existing certificate with same candidate/position first
-      const filtered = prev.filter(c => !(c.candidateName === certificate.candidateName && c.position === certificate.position));
-      const updated = [...filtered, certificate];
-      return updated;
-    });
-    
-    // Clean up current session
-    setCurrentSession(null);
-    
-    // Show completion message and redirect to admin after delay
-    setTimeout(() => {
-      setAppState(userType || 'login');
-      // Clear URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }, 3000);
-  };
-
-  if (isAnalyzingResume) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Your Resume</h2>
-          <p className="text-gray-600">AI is analyzing your background to create personalized questions...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (appState === 'login') {
     return <LoginInterface onLogin={handleLogin} />;
   }
 
   if (appState === 'jobseeker' && currentUser) {
     return (
-      <JobseekerDashboard user={currentUser} onLogout={handleLogout} onStartInterview={handleStartJobseekerInterview} />
+      <JobseekerDashboard user={currentUser} onLogout={handleLogout} />
     );
   }
 
-  if (appState === 'resume-upload' && currentSession) {
+  if (appState === 'recruiter' && currentUser) {
+    const recruiterData: Recruiter = {
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      company: currentUser.company || 'Demo Company',
+      referralCode: currentUser.referralCode || 'DEMO2024',
+      totalEarnings: 1250.00,
+      pendingEarnings: 320.00,
+      totalReferrals: 24,
+      commissionRate: currentUser.commissionRate || 20,
+      isActive: true,
+      joinedAt: new Date()
+    };
+    
     return (
-      <ResumeUpload
-        onResumeUploaded={handleResumeUploaded}
-        onSkip={handleSkipResume}
-      />
-    );
-  }
-
-  if (appState === 'interview' && currentSession) {
-    return (
-      <InterviewInterface
-        sessionId={currentSession.id}
-        candidateName={currentSession.candidateName}
-        position={currentSession.position}
-        resumeAnalysis={currentSession.resumeAnalysis}
-        onComplete={handleInterviewComplete}
-      />
-    );
-  }
-
-  if (appState === 'evaluation' && currentSession) {
-    return (
-      <EvaluationInterface
-        session={currentSession}
-        onEvaluationComplete={handleEvaluationComplete}
-      />
+      <RecruiterPortal recruiter={recruiterData} onLogout={handleLogout} />
     );
   }
 
   if (appState === 'admin') {
     return (
-    <AdminDashboard
-      sessions={sessions}
-      certificates={certificates}
-      onGenerateLink={generateInterviewLink}
+      <AdminDashboard
+        sessions={sessions}
+        certificates={certificates}
+        onGenerateLink={generateInterviewLink}
         onLogout={handleLogout}
-    />
+      />
     );
   }
 

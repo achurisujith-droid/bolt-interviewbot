@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, Bell, Mail, Smartphone, Monitor } from 'lucide-react';
-import { InterviewOffering, InterviewSchedule } from '../../types/offerings';
+import { InterviewProduct, InterviewSchedule } from '../../types/products';
 
 interface InterviewSchedulerProps {
-  offering: InterviewOffering;
+  offering: InterviewProduct;
   onSchedule: (schedule: Omit<InterviewSchedule, 'id' | 'createdAt'>) => void;
   onStartNow: () => void;
   onCancel: () => void;
