@@ -2,7 +2,7 @@ import { InterviewOffering } from '../types/offerings';
 
 export const defaultOfferings: InterviewOffering[] = [
   {
-    id: 'software-dev-basic',
+    id: 'software-dev-entry',
     title: 'Software Developer - Entry Level',
     description: 'Comprehensive assessment for entry-level software development positions covering programming fundamentals, problem-solving, and basic system design.',
     category: 'technical',
@@ -15,7 +15,9 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 60,
     certificateTemplate: 'software-developer-entry',
-    price: 0
+    price: 0,
+    prerequisites: ['Basic programming knowledge', 'Understanding of data structures'],
+    industryFocus: ['Technology', 'Software', 'Startups']
   },
   {
     id: 'software-dev-senior',
@@ -31,7 +33,9 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 75,
     certificateTemplate: 'software-developer-senior',
-    price: 0
+    price: 0,
+    prerequisites: ['5+ years programming experience', 'System design knowledge', 'Leadership experience'],
+    industryFocus: ['Technology', 'Enterprise', 'Fintech']
   },
   {
     id: 'data-scientist',
@@ -47,7 +51,9 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 70,
     certificateTemplate: 'data-scientist',
-    price: 0
+    price: 0,
+    prerequisites: ['Statistics background', 'Python/R programming', 'SQL knowledge'],
+    industryFocus: ['Technology', 'Healthcare', 'Finance', 'Research']
   },
   {
     id: 'product-manager',
@@ -63,11 +69,13 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 65,
     certificateTemplate: 'product-manager',
-    price: 0
+    price: 0,
+    prerequisites: ['Business analysis experience', 'User research knowledge', 'Project management'],
+    industryFocus: ['Technology', 'E-commerce', 'SaaS', 'Mobile Apps']
   },
   {
     id: 'marketing-manager',
-    title: 'Marketing Manager',
+    title: 'Digital Marketing Manager',
     description: 'Marketing leadership assessment covering digital marketing, campaign management, analytics, and team leadership.',
     category: 'mixed',
     duration: 35,
@@ -79,7 +87,9 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 65,
     certificateTemplate: 'marketing-manager',
-    price: 0
+    price: 0,
+    prerequisites: ['Marketing experience', 'Digital advertising knowledge', 'Analytics tools'],
+    industryFocus: ['Marketing', 'E-commerce', 'Media', 'Retail']
   },
   {
     id: 'ui-ux-designer',
@@ -95,7 +105,9 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 70,
     certificateTemplate: 'ui-ux-designer',
-    price: 0
+    price: 0,
+    prerequisites: ['Design portfolio', 'Prototyping tools knowledge', 'User research experience'],
+    industryFocus: ['Technology', 'Design Agencies', 'E-commerce', 'Mobile Apps']
   },
   {
     id: 'devops-engineer',
@@ -111,7 +123,9 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 75,
     certificateTemplate: 'devops-engineer',
-    price: 0
+    price: 0,
+    prerequisites: ['Linux/Unix experience', 'Cloud platform knowledge', 'Scripting skills'],
+    industryFocus: ['Technology', 'Cloud Services', 'Enterprise', 'Startups']
   },
   {
     id: 'sales-representative',
@@ -127,7 +141,45 @@ export const defaultOfferings: InterviewOffering[] = [
     updatedAt: new Date(),
     passingScore: 60,
     certificateTemplate: 'sales-representative',
-    price: 0
+    price: 0,
+    prerequisites: ['Communication skills', 'Customer service experience'],
+    industryFocus: ['Sales', 'Retail', 'B2B Services', 'Technology']
+  },
+  {
+    id: 'business-analyst',
+    title: 'Business Analyst',
+    description: 'Business analysis assessment covering requirements gathering, process improvement, stakeholder management, and documentation.',
+    category: 'mixed',
+    duration: 45,
+    questionCount: 8,
+    difficulty: 'mid',
+    skills: ['Requirements Analysis', 'Process Improvement', 'Stakeholder Management', 'Documentation', 'Data Analysis'],
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date(),
+    passingScore: 70,
+    certificateTemplate: 'business-analyst',
+    price: 0,
+    prerequisites: ['Business process knowledge', 'Analytical thinking', 'Documentation skills'],
+    industryFocus: ['Consulting', 'Finance', 'Healthcare', 'Technology']
+  },
+  {
+    id: 'project-manager',
+    title: 'Project Manager',
+    description: 'Project management evaluation covering planning, execution, risk management, and team leadership.',
+    category: 'behavioral',
+    duration: 40,
+    questionCount: 7,
+    difficulty: 'mid',
+    skills: ['Project Planning', 'Risk Management', 'Team Leadership', 'Communication', 'Budget Management'],
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date(),
+    passingScore: 65,
+    certificateTemplate: 'project-manager',
+    price: 0,
+    prerequisites: ['Project management experience', 'Leadership skills', 'Planning abilities'],
+    industryFocus: ['Construction', 'Technology', 'Healthcare', 'Manufacturing']
   }
 ];
 
@@ -141,4 +193,22 @@ export const getOfferingsByCategory = (category: string): InterviewOffering[] =>
 
 export const getOfferingsByDifficulty = (difficulty: string): InterviewOffering[] => {
   return defaultOfferings.filter(offering => offering.difficulty === difficulty && offering.isActive);
+};
+
+export const getOfferingsByIndustry = (industry: string): InterviewOffering[] => {
+  return defaultOfferings.filter(offering => 
+    offering.industryFocus?.includes(industry) && offering.isActive
+  );
+};
+
+export const searchOfferings = (searchTerm: string): InterviewOffering[] => {
+  const term = searchTerm.toLowerCase();
+  return defaultOfferings.filter(offering => 
+    offering.isActive && (
+      offering.title.toLowerCase().includes(term) ||
+      offering.description.toLowerCase().includes(term) ||
+      offering.skills.some(skill => skill.toLowerCase().includes(term)) ||
+      offering.industryFocus?.some(industry => industry.toLowerCase().includes(term))
+    )
+  );
 };

@@ -13,6 +13,8 @@ export interface InterviewOffering {
   passingScore: number;
   certificateTemplate: string;
   price?: number; // for future monetization
+  prerequisites?: string[];
+  industryFocus?: string[];
 }
 
 export interface UserOffering {
@@ -36,4 +38,34 @@ export interface InterviewSchedule {
   status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
   reminderSent: boolean;
   createdAt: Date;
+  notificationPreferences?: {
+    email: boolean;
+    sms: boolean;
+    push: boolean;
+  };
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  domain: string;
+  logo?: string;
+  settings: {
+    allowSelfRegistration: boolean;
+    requireEmailVerification: boolean;
+    customBranding: boolean;
+    maxAttemptsPerOffering: number;
+  };
+  createdAt: Date;
+  isActive: boolean;
+}
+
+export interface UserProgress {
+  userId: string;
+  offeringId: string;
+  completionPercentage: number;
+  timeSpent: number; // in minutes
+  lastActivity: Date;
+  currentQuestionIndex: number;
+  bookmarkedQuestions: string[];
 }
