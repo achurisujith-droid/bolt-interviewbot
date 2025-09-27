@@ -52,6 +52,8 @@ export interface Certificate {
   isReEvaluation?: boolean;
   originalScore?: number;
   evaluationMethod?: string;
+  productType?: string;
+  paymentId?: string;
 }
 
 export interface ResumeAnalysis {
@@ -67,4 +69,7 @@ export interface ResumeAnalysis {
   yearsOfExperience: number;
   keyTechnologies: string[];
   seniority?: 'junior' | 'mid' | 'senior';
+  recommendedProducts?: string[];
+  skillLevel?: number;
+  confidenceLevel?: number;
 }
