@@ -32,7 +32,7 @@ export const azureConfig = {
     timeout: 30000,
     // Multiple API keys for load distribution (set in Azure App Settings)
     apiKeys: [
-      process.env.VITE_OPENAI_API_KEY,
+      import.meta.env.VITE_OPENAI_API_KEY,
       import.meta.env.VITE_OPENAI_API_KEY_2,
       import.meta.env.VITE_OPENAI_API_KEY_3
     ].filter(Boolean),
