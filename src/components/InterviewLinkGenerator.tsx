@@ -98,7 +98,6 @@ export const InterviewLinkGenerator: React.FC<InterviewLinkGeneratorProps> = ({ 
           </div>
         )}
       </div>
-      </div>
     </div>
   );
 };
