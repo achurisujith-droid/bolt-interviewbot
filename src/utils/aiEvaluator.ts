@@ -1,4 +1,6 @@
 import { InterviewResponse } from '../types/interview';
+import { performanceOptimizer, smartCache } from './performanceOptimizer';
+import { azureConfig } from './azureConfig';
 
 // Configuration for AI services
 const AI_CONFIG = {
@@ -17,33 +19,54 @@ const prepareAudioForWhisper = (audioBlob: Blob): FormData => {
 
 // Real OpenAI Whisper API integration for speech-to-text
 const transcribeWithOpenAI = async (audioBlob: Blob): Promise<string> => {
-  if (!AI_CONFIG.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file');
+  // Generate cache key for transcription
+  const audioHash = await generateBlobHash(audioBlob);
+  const cacheKey = `transcription:${audioHash}`;
+  
+  // Check cache first
+  const cachedResult = smartCache.get<string>(cacheKey);
+  if (cachedResult) {
+    console.log('📋 Using cached transcription');
+    return cachedResult;
   }
 
-  const formData = prepareAudioForWhisper(audioBlob);
+  return performanceOptimizer.optimizedOpenAIRequest(async (apiKey) => {
+    const formData = prepareAudioForWhisper(audioBlob);
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${AI_CONFIG.OPENAI_API_KEY}`,
-    },
-    body: formData,
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`OpenAI Whisper API error: ${error.error?.message || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    const transcript = result.text || 'No transcription available';
+    
+    // Cache the result
+    smartCache.set(cacheKey, transcript, azureConfig.cache.ttl.evaluations);
+    
+    return transcript;
   });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`OpenAI Whisper API error: ${error.error?.message || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  return result.text || 'No transcription available';
 };
 
 // Real OpenAI GPT-4o evaluation with detailed analysis
 const evaluateWithGPT4o = async (question: string, transcript: string, position: string, resumeContext?: string): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
-  if (!AI_CONFIG.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key not configured');
+  // Generate cache key for evaluation
+  const evaluationHash = await generateTextHash(`${question}:${transcript}:${position}`);
+  const cacheKey = `evaluation:${evaluationHash}`;
+  
+  // Check cache first
+  const cachedResult = smartCache.get<any>(cacheKey);
+  if (cachedResult) {
+    console.log('📋 Using cached evaluation');
+    return cachedResult;
   }
 
   const contextInfo = resumeContext ? `\n**Resume Context**: ${resumeContext}` : '';
@@ -74,58 +97,65 @@ Provide your evaluation in this exact JSON format:
 Be fair but thorough. Consider the position requirements and provide actionable feedback.
 `;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${AI_CONFIG.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: AI_CONFIG.OPENAI_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert interview evaluator. Always respond with valid JSON format. Be professional, fair, and constructive in your evaluations.'
-        },
-        {
-          role: 'user',
-          content: evaluationPrompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 1000,
-    }),
-  });
+  return performanceOptimizer.optimizedOpenAIRequest(async (apiKey) => {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: AI_CONFIG.OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert interview evaluator. Always respond with valid JSON format. Be professional, fair, and constructive in your evaluations.'
+          },
+          {
+            role: 'user',
+            content: evaluationPrompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`OpenAI GPT-4o API error: ${error.error?.message || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  
-  try {
-    let content = result.choices[0].message.content;
-    
-    // Strip markdown code blocks if present
-    if (content.startsWith('```json')) {
-      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (content.startsWith('```')) {
-      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`OpenAI GPT-4o API error: ${error.error?.message || 'Unknown error'}`);
     }
+
+    const result = await response.json();
     
-    const evaluation = JSON.parse(content);
-    
-    return {
-      score: Math.max(0, Math.min(100, evaluation.score)),
-      feedback: evaluation.feedback,
-      strengths: evaluation.strengths || [],
-      improvements: evaluation.improvements || []
-    };
-  } catch (parseError) {
-    console.error('Failed to parse GPT-4o response:', result.choices[0].message.content);
-    throw new Error('Invalid response format from GPT-4o');
-  }
+    try {
+      let content = result.choices[0].message.content;
+      
+      // Strip markdown code blocks if present
+      if (content.startsWith('```json')) {
+        content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (content.startsWith('```')) {
+        content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const evaluation = JSON.parse(content);
+      
+      const result = {
+        score: Math.max(0, Math.min(100, evaluation.score)),
+        feedback: evaluation.feedback,
+        strengths: evaluation.strengths || [],
+        improvements: evaluation.improvements || []
+      };
+      
+      // Cache the result
+      smartCache.set(cacheKey, result, azureConfig.cache.ttl.evaluations);
+      
+      return result;
+    } catch (parseError) {
+      console.error('Failed to parse GPT-4o response:', result.choices[0].message.content);
+      throw new Error('Invalid response format from GPT-4o');
+    }
+  });
 };
 
 // Generate interview questions using GPT-4o
@@ -210,53 +240,82 @@ Make questions engaging and allow candidates to showcase their skills and experi
 
 // Text-to-Speech for asking questions
 export const speakQuestion = async (questionText: string): Promise<void> => {
-  if (!AI_CONFIG.OPENAI_API_KEY) {
-    // Fallback to browser's built-in speech synthesis
-    return speakWithBrowserTTS(questionText);
+  // Generate cache key for TTS
+  const textHash = await generateTextHash(questionText);
+  const cacheKey = `tts:${textHash}`;
+  
+  // Check if we have cached audio URL
+  const cachedAudioUrl = smartCache.get<string>(cacheKey);
+  if (cachedAudioUrl) {
+    console.log('📋 Using cached TTS audio');
+    return playAudioFromUrl(cachedAudioUrl);
   }
 
-  try {
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_CONFIG.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'tts-1',
-        input: `Hello! Here's your next interview question: ${questionText}. Please take your time to think and provide a detailed response.`,
-        voice: 'alloy', // Professional, neutral voice
-        speed: 0.9, // Slightly slower for clarity
-      }),
-    });
+  return performanceOptimizer.optimizedOpenAIRequest(async (apiKey) => {
+    try {
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'tts-1',
+          input: `Hello! Here's your next interview question: ${questionText}. Please take your time to think and provide a detailed response.`,
+          voice: 'alloy', // Professional, neutral voice
+          speed: 0.9, // Slightly slower for clarity
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error('TTS API error');
+      if (!response.ok) {
+        throw new Error('TTS API error');
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Cache the audio URL
+      smartCache.set(cacheKey, audioUrl, azureConfig.cache.ttl.questions);
+      
+      return playAudioFromUrl(audioUrl);
+    } catch (error) {
+      console.error('OpenAI TTS failed, using browser TTS:', error);
+      return speakWithBrowserTTS(questionText);
     }
-
-    const audioBuffer = await response.arrayBuffer();
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-    const audioUrl = URL.createObjectURL(audioBlob);
-    
-    const audio = new Audio(audioUrl);
-    
-    return new Promise((resolve, reject) => {
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        resolve();
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        reject(new Error('Audio playback failed'));
-      };
-      audio.play();
-    });
-  } catch (error) {
-    console.error('OpenAI TTS failed, using browser TTS:', error);
-    return speakWithBrowserTTS(questionText);
-  }
+  });
 };
 
+// Helper function to play audio from URL
+const playAudioFromUrl = (audioUrl: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(audioUrl);
+    
+    audio.onended = () => {
+      resolve();
+    };
+    audio.onerror = () => {
+      reject(new Error('Audio playback failed'));
+    };
+    audio.play();
+  });
+};
+
+// Helper function to generate hash for caching
+const generateTextHash = async (text: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+};
+
+const generateBlobHash = async (blob: Blob): Promise<string> => {
+  const arrayBuffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+};
 // Fallback browser text-to-speech
 const speakWithBrowserTTS = (text: string): Promise<void> => {
   return new Promise((resolve, reject) => {
