@@ -1,20 +1,20 @@
 // Azure App Service Configuration
 export const azureConfig = {
   // Environment detection
-  isProduction: process.env.NODE_ENV === 'production',
-  isAzure: !!process.env.WEBSITE_SITE_NAME, // Azure App Service specific env var
+  isProduction: import.meta.env.MODE === 'production',
+  isAzure: !!import.meta.env.VITE_WEBSITE_SITE_NAME, // Azure App Service specific env var
   
   // API Configuration for Azure
-  apiBaseUrl: process.env.NODE_ENV === 'production' 
-    ? `https://${process.env.WEBSITE_SITE_NAME}.azurewebsites.net/api`
+  apiBaseUrl: import.meta.env.MODE === 'production' 
+    ? `https://${import.meta.env.VITE_WEBSITE_SITE_NAME}.azurewebsites.net/api`
     : 'http://localhost:3001/api',
   
   // Azure-specific settings
   azure: {
-    siteName: process.env.WEBSITE_SITE_NAME,
-    resourceGroup: process.env.WEBSITE_RESOURCE_GROUP,
-    subscriptionId: process.env.WEBSITE_OWNER_NAME,
-    region: process.env.WEBSITE_SITE_NAME?.includes('eastus') ? 'eastus' : 'westus2'
+    siteName: import.meta.env.VITE_WEBSITE_SITE_NAME,
+    resourceGroup: import.meta.env.VITE_WEBSITE_RESOURCE_GROUP,
+    subscriptionId: import.meta.env.VITE_WEBSITE_OWNER_NAME,
+    region: import.meta.env.VITE_WEBSITE_SITE_NAME?.includes('eastus') ? 'eastus' : 'westus2'
   },
   
   // Performance settings for concurrent users
@@ -33,8 +33,8 @@ export const azureConfig = {
     // Multiple API keys for load distribution (set in Azure App Settings)
     apiKeys: [
       process.env.VITE_OPENAI_API_KEY,
-      process.env.VITE_OPENAI_API_KEY_2,
-      process.env.VITE_OPENAI_API_KEY_3
+      import.meta.env.VITE_OPENAI_API_KEY_2,
+      import.meta.env.VITE_OPENAI_API_KEY_3
     ].filter(Boolean),
     
     // Rate limiting per key
@@ -58,9 +58,9 @@ export const azureConfig = {
   
   // Monitoring and logging
   monitoring: {
-    enabled: process.env.NODE_ENV === 'production',
-    applicationInsights: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
-    logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'debug'
+    enabled: import.meta.env.MODE === 'production',
+    applicationInsights: import.meta.env.VITE_APPINSIGHTS_INSTRUMENTATIONKEY,
+    logLevel: import.meta.env.MODE === 'production' ? 'error' : 'debug'
   }
 };
 
@@ -196,7 +196,7 @@ export const azureDeploymentConfig = {
   
   // Application settings for Azure
   appSettings: {
-    'NODE_ENV': 'production',
+    'MODE': 'production',
     'WEBSITE_NODE_DEFAULT_VERSION': '18.x',
     'SCM_DO_BUILD_DURING_DEPLOYMENT': 'true',
     'WEBSITE_RUN_FROM_PACKAGE': '1',
