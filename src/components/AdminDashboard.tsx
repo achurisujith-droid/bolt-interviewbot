@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video } from 'lucide-react';
+import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video, LogOut, TrendingUp, Clock, Star } from 'lucide-react';
 import { InterviewSession, Certificate } from '../types/interview';
 import { InterviewLinkGenerator } from './InterviewLinkGenerator';
 import { OpenAITest } from './OpenAITest';
@@ -12,12 +12,14 @@ interface AdminDashboardProps {
   sessions: InterviewSession[];
   certificates: Certificate[];
   onGenerateLink: (candidateEmail: string, position: string) => string;
+  onLogout: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   sessions,
   certificates,
-  onGenerateLink
+  onGenerateLink,
+  onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null);
@@ -122,44 +124,69 @@ Are you absolutely sure you want to continue?`;
   };
   const renderOverview = () => (
     <div className="space-y-6">
+      {/* Enhanced Stats Cards with Gradients */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-blue-500 text-white rounded-lg p-6">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100">Total Sessions</p>
-              <p className="text-3xl font-bold">{sessions.length}</p>
+              <p className="text-blue-100 text-sm font-medium">Total Sessions</p>
+              <p className="text-3xl font-bold mb-1">{sessions.length}</p>
+              <div className="flex items-center text-blue-200 text-xs">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                +12% this month
+              </div>
             </div>
-            <Users className="w-8 h-8 text-blue-200" />
+            <div className="bg-white bg-opacity-20 rounded-lg p-3">
+              <Users className="w-8 h-8 text-white" />
+            </div>
           </div>
         </div>
         
-        <div className="bg-green-500 text-white rounded-lg p-6">
+        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100">Completed</p>
-              <p className="text-3xl font-bold">{completedSessions.length}</p>
+              <p className="text-green-100 text-sm font-medium">Completed</p>
+              <p className="text-3xl font-bold mb-1">{completedSessions.length}</p>
+              <div className="flex items-center text-green-200 text-xs">
+                <Clock className="w-3 h-3 mr-1" />
+                {completedSessions.length > 0 ? 'Latest today' : 'None yet'}
+              </div>
             </div>
-            <BarChart3 className="w-8 h-8 text-green-200" />
+            <div className="bg-white bg-opacity-20 rounded-lg p-3">
+              <BarChart3 className="w-8 h-8 text-white" />
+            </div>
           </div>
         </div>
         
-        <div className="bg-purple-500 text-white rounded-lg p-6">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100">Certificates</p>
-              <p className="text-3xl font-bold">{certificates.length}</p>
+              <p className="text-purple-100 text-sm font-medium">Certificates</p>
+              <p className="text-3xl font-bold mb-1">{certificates.length}</p>
+              <div className="flex items-center text-purple-200 text-xs">
+                <Award className="w-3 h-3 mr-1" />
+                Ready to download
+              </div>
             </div>
-            <Award className="w-8 h-8 text-purple-200" />
+            <div className="bg-white bg-opacity-20 rounded-lg p-3">
+              <Award className="w-8 h-8 text-white" />
+            </div>
           </div>
         </div>
         
-        <div className="bg-yellow-500 text-white rounded-lg p-6">
+        <div className="bg-gradient-to-br from-orange-500 to-yellow-500 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-yellow-100">Avg Score</p>
-              <p className="text-3xl font-bold">{averageScore}%</p>
+              <p className="text-yellow-100 text-sm font-medium">Avg Score</p>
+              <p className="text-3xl font-bold mb-1">{averageScore}%</p>
+              <div className="flex items-center text-yellow-200 text-xs">
+                <Star className="w-3 h-3 mr-1" />
+                {averageScore >= 75 ? 'Excellent' : averageScore >= 60 ? 'Good' : 'Improving'}
+              </div>
             </div>
-            <BarChart3 className="w-8 h-8 text-yellow-200" />
+            <div className="bg-white bg-opacity-20 rounded-lg p-3">
+              <BarChart3 className="w-8 h-8 text-white" />
+            </div>
           </div>
         </div>
       </div>
@@ -735,15 +762,50 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      {/* Premium Navigation Header */}
+      <nav className="bg-white shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">AI</span>
+                  </div>
+                  <span className="ml-2 text-xl font-bold text-gray-800">Admin Dashboard</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-medium text-sm">A</span>
+                </div>
+                <span className="text-sm font-medium text-gray-700">Administrator</span>
+              </div>
+              <button
+                onClick={onLogout}
+                className="flex items-center px-3 py-2 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-1" />
+                <span className="text-sm">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-8 mt-4">
           <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
           <p className="text-gray-600">Manage interviews and monitor candidate performance</p>
         </div>
         
         <div className="mb-6">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 bg-white rounded-lg shadow-md p-2">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'sessions', label: 'Sessions', icon: Users },
@@ -754,10 +816,10 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 <tab.icon className="w-4 h-4 mr-2" />
@@ -774,6 +836,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
           {activeTab === 'test-api' && <OpenAITest />}
           {activeTab === 'methods' && <InterviewMethodComparison />}
         </div>
+      </div>
       </div>
 
       {/* Detailed Evaluation Report Modal */}

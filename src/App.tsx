@@ -3,18 +3,22 @@ import { InterviewInterface } from './components/InterviewInterface';
 import { EvaluationInterface } from './components/EvaluationInterface';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ResumeUpload } from './components/ResumeUpload';
+import { JobseekerDashboard } from './components/jobseeker/JobseekerDashboard';
+import { LoginInterface } from './components/auth/LoginInterface';
 import { InterviewSession, Certificate, InterviewResponse, ResumeAnalysis } from './types/interview';
 import { analyzeResume } from './utils/resumeAnalyzer';
 
-type AppState = 'admin' | 'resume-upload' | 'interview' | 'evaluation';
+type AppState = 'login' | 'admin' | 'jobseeker' | 'resume-upload' | 'interview' | 'evaluation';
 
 function App() {
-  const [appState, setAppState] = useState<AppState>('admin');
+  const [appState, setAppState] = useState<AppState>('login');
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userType, setUserType] = useState<'admin' | 'jobseeker' | null>(null);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -107,7 +111,7 @@ function App() {
         // Session already completed, redirect to admin
         console.log('🔄 Session already exists and completed, redirecting to admin');
         window.history.replaceState({}, document.title, window.location.pathname);
-        setAppState('admin');
+        setAppState('login');
       } else {
         // Create new session or use existing pending session
         const newSession: InterviewSession = existingSession || {
@@ -303,6 +307,22 @@ function App() {
     setAppState('interview');
   };
 
+  const handleLogin = (user: any, type: 'admin' | 'jobseeker') => {
+    setCurrentUser(user);
+    setUserType(type);
+    setAppState(type);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setUserType(null);
+    setAppState('login');
+  };
+
+  const handleStartJobseekerInterview = () => {
+    setAppState('resume-upload');
+  };
+
   const handleInterviewComplete = (responses: InterviewResponse[]) => {
     if (currentSession) {
       const updatedSession: InterviewSession = {
@@ -346,7 +366,7 @@ function App() {
     
     // Show completion message and redirect to admin after delay
     setTimeout(() => {
-      setAppState('admin');
+      setAppState(userType || 'login');
       // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }, 3000);
@@ -361,6 +381,16 @@ function App() {
           <p className="text-gray-600">AI is analyzing your background to create personalized questions...</p>
         </div>
       </div>
+    );
+  }
+
+  if (appState === 'login') {
+    return <LoginInterface onLogin={handleLogin} />;
+  }
+
+  if (appState === 'jobseeker' && currentUser) {
+    return (
+      <JobseekerDashboard user={currentUser} onLogout={handleLogout} onStartInterview={handleStartJobseekerInterview} />
     );
   }
 
@@ -394,13 +424,18 @@ function App() {
     );
   }
 
-  return (
+  if (appState === 'admin') {
+    return (
     <AdminDashboard
       sessions={sessions}
       certificates={certificates}
       onGenerateLink={generateInterviewLink}
+        onLogout={handleLogout}
     />
-  );
+    );
+  }
+
+  return <div>Loading...</div>;
 }
 
 export default App;
