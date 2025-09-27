@@ -131,12 +131,13 @@ Be fair but thorough. Consider the position requirements and provide actionable 
     try {
       let content = result.choices[0].message.content;
       
-      // Strip markdown code blocks if present
-      if (content.startsWith('```json')) {
-        content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (content.startsWith('```')) {
-        content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
-      }
+     // Use robust regex to extract JSON from markdown code blocks
+     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+     if (jsonMatch) {
+       content = jsonMatch[1].trim();
+     } else {
+       content = content.trim();
+     }
       
       const evaluation = JSON.parse(content);
       

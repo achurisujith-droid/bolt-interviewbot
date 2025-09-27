@@ -78,12 +78,13 @@ Apply entry-level evaluation standards:
     try {
       // Check if we have transcripts
       const responsesWithTranscripts = session.responses.filter(r => r.transcript);
-      if (responsesWithTranscripts.length === 0) {
-        alert('❌ No transcripts available for re-evaluation. Transcripts are needed to apply different evaluation methods.');
-        setIsReEvaluating(false);
-        return;
-      }
-
+     // Use robust regex to extract JSON from markdown code blocks
+     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+     if (jsonMatch) {
+       content = jsonMatch[1].trim();
+     } else {
+       content = content.trim();
+     }
       const updatedResponses = [...session.responses];
       const totalResponses = responsesWithTranscripts.length;
 
