@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Lock, Shield, CheckCircle, X, Star, Clock, Users, Award } from 'lucide-react';
+import { CreditCard, Lock, Shield, CheckCircle, X, Star, Clock, Users, Award, Zap } from 'lucide-react';
 import { InterviewProduct, Payment } from '../../types/products';
 
 interface ProductPurchaseModalProps {
