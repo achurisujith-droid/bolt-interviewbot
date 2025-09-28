@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Play, Pause, SkipForward, CheckCircle, Volume2, VolumeX, Bot } from 'lucide-react';
+import { Mic, MicOff, Play, Pause, SkipForward, CheckCircle, Volume2, VolumeX, Bot, Camera, Shield } from 'lucide-react';
 import { AudioRecorder } from '../utils/audioRecorder';
-import { Question, InterviewResponse, ResumeAnalysis } from '../types/interview';
+import { Question, InterviewResponse, ResumeAnalysis, ProctoringData, ProctoringSettings } from '../types/interview';
 import { defaultQuestions, generateQuestionsForPosition } from '../data/questions';
 import { speakQuestion } from '../utils/aiEvaluator';
 import { generateResumeBasedQuestions } from '../utils/resumeAnalyzer';
+import { ProctoringService } from '../utils/proctoringService';
+import { ProctoringConsent } from './ProctoringConsent';
+import { ProctoringWarning } from './ProctoringWarning';
 
 interface InterviewInterfaceProps {
   sessionId: string;
@@ -33,11 +36,26 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [hasSpokenCurrentQuestion, setHasSpokenCurrentQuestion] = useState(false);
+  
+  // Proctoring states
+  const [showProctoringConsent, setShowProctoringConsent] = useState(true);
+  const [proctoringEnabled, setProctoringEnabled] = useState(false);
+  const [proctoringService, setProctoringService] = useState<ProctoringService | null>(null);
+  const [proctoringData, setProctoringData] = useState<ProctoringData | null>(null);
+  const [currentViolation, setCurrentViolation] = useState<any>(null);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   // Load questions on component mount
   useEffect(() => {
     loadQuestions();
   }, []);
+
+  // Initialize proctoring when enabled
+  useEffect(() => {
+    if (proctoringEnabled && !proctoringService) {
+      initializeProctoring();
+    }
+  }, [proctoringEnabled]);
 
   // Auto-speak question when it changes (only once per question)
   useEffect(() => {
@@ -48,6 +66,77 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
       }
     }
   }, [currentQuestionIndex, autoSpeak, questions, isSpeaking, hasSpokenCurrentQuestion]);
+
+  const handleProctoringConsent = (consentGiven: boolean) => {
+    setShowProctoringConsent(false);
+    setProctoringEnabled(consentGiven);
+    
+    if (consentGiven) {
+      // Initialize camera for proctoring
+      initializeCamera();
+    }
+  };
+
+  const initializeCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 640, height: 480 }, 
+        audio: false 
+      });
+      
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.muted = true;
+      video.style.display = 'none';
+      document.body.appendChild(video);
+      
+      setVideoElement(video);
+    } catch (error) {
+      console.error('Failed to initialize camera for proctoring:', error);
+      alert('Camera access is required for proctoring. Please allow camera access and refresh.');
+    }
+  };
+
+  const initializeProctoring = async () => {
+    if (!videoElement) return;
+
+    const settings: ProctoringSettings = {
+      captureInterval: 90, // 90 seconds
+      faceDetectionEnabled: true,
+      multiPersonDetection: true,
+      warningsEnabled: true,
+      autoFlagViolations: true
+    };
+
+    const service = new ProctoringService(settings);
+    await service.initialize(videoElement);
+
+    // Set up event handlers
+    service.onViolation((violation) => {
+      setCurrentViolation(violation);
+      console.log('🚨 Proctoring violation:', violation);
+    });
+
+    service.onScreenshot((screenshot) => {
+      console.log('📸 Screenshot captured:', screenshot);
+    });
+
+    setProctoringService(service);
+
+    // Initialize proctoring data
+    const initialData: ProctoringData = {
+      enabled: true,
+      screenshots: [],
+      violations: [],
+      consentGiven: true,
+      settings
+    };
+    setProctoringData(initialData);
+
+    // Start proctoring
+    await service.startProctoring();
+  };
 
   const loadQuestions = async () => {
     setIsLoadingQuestions(true);
@@ -171,12 +260,61 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
     
     if (isLastQuestion) {
       console.log('✅ Interview complete! Calling onComplete with responses:', responses.length);
+      
+      // Stop proctoring and include data
+      if (proctoringService) {
+        proctoringService.stopProctoring();
+        const finalProctoringData: ProctoringData = {
+          enabled: proctoringEnabled,
+          screenshots: proctoringService.getScreenshots(),
+          violations: proctoringService.getViolations(),
+          consentGiven: proctoringEnabled,
+          settings: proctoringData?.settings || {
+            captureInterval: 90,
+            faceDetectionEnabled: true,
+            multiPersonDetection: true,
+            warningsEnabled: true,
+            autoFlagViolations: true
+          }
+        };
+        setProctoringData(finalProctoringData);
+      }
+      
       onComplete(responses);
     } else {
       setCurrentQuestionIndex(prev => prev + 1);
       setHasSpokenCurrentQuestion(false); // Reset for next question
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (proctoringService) {
+        proctoringService.destroy();
+      }
+      if (videoElement) {
+        const stream = videoElement.srcObject as MediaStream;
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        if (document.body.contains(videoElement)) {
+          document.body.removeChild(videoElement);
+        }
+      }
+    };
+  }, [proctoringService, videoElement]);
+
+  // Show proctoring consent first
+  if (showProctoringConsent) {
+    return (
+      <ProctoringConsent
+        onConsent={handleProctoringConsent}
+        candidateName={candidateName}
+        position={position}
+      />
+    );
+  }
 
   // Loading state
   if (isLoadingQuestions) {
@@ -220,9 +358,15 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
           <div className="flex items-center justify-center mb-4">
             <Bot className="w-12 h-12 text-blue-600 mr-3" />
             <h1 className="text-2xl font-bold text-gray-800">AI Audio Interview</h1>
+            {proctoringEnabled && (
+              <Shield className="w-6 h-6 text-green-600 ml-3" title="Proctoring Active" />
+            )}
           </div>
           <p className="text-gray-600">Welcome, {candidateName}</p>
           <p className="text-sm text-gray-500">Position: {position}</p>
+          {proctoringEnabled && (
+            <p className="text-xs text-green-600 mt-1">🔍 Interview is being monitored for integrity</p>
+          )}
         </div>
 
         <div className="mb-6">
@@ -367,6 +511,14 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
           <p>Speak clearly and take your time.</p>
         </div>
       </div>
+
+      {/* Proctoring Warning */}
+      {currentViolation && (
+        <ProctoringWarning
+          violation={currentViolation}
+          onDismiss={() => setCurrentViolation(null)}
+        />
+      )}
     </div>
   );
 };

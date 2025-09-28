@@ -24,6 +24,7 @@ export interface InterviewSession {
   lastReEvaluatedAt?: Date;
   evaluationMethod?: string;
   interviewType?: 'audio' | 'video';
+  proctoring?: ProctoringData;
 }
 
 export interface InterviewResponse {
@@ -42,6 +43,42 @@ export interface InterviewResponse {
   customInstructions?: string;
 }
 
+export interface ProctoringData {
+  enabled: boolean;
+  screenshots: ProctoringScreenshot[];
+  violations: ProctoringViolation[];
+  candidatePhoto?: string; // Base64 encoded initial photo
+  consentGiven: boolean;
+  settings: ProctoringSettings;
+}
+
+export interface ProctoringScreenshot {
+  id: string;
+  timestamp: Date;
+  imageData: string; // Base64 encoded image
+  faceCount: number;
+  confidence: number;
+  flagged: boolean;
+  questionIndex?: number;
+}
+
+export interface ProctoringViolation {
+  id: string;
+  timestamp: Date;
+  type: 'multiple_faces' | 'no_face' | 'face_changed' | 'suspicious_activity';
+  description: string;
+  screenshotId: string;
+  severity: 'low' | 'medium' | 'high';
+  resolved: boolean;
+}
+
+export interface ProctoringSettings {
+  captureInterval: number; // seconds
+  faceDetectionEnabled: boolean;
+  multiPersonDetection: boolean;
+  warningsEnabled: boolean;
+  autoFlagViolations: boolean;
+}
 export interface Certificate {
   id: string;
   candidateName: string;

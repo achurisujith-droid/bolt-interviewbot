@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video } from 'lucide-react';
+import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video, Shield, Camera } from 'lucide-react';
 import { InterviewSession, Certificate } from '../types/interview';
 import { InterviewLinkGenerator } from './InterviewLinkGenerator';
 import { OpenAITest } from './OpenAITest';
 import { DetailedEvaluationReport } from './DetailedEvaluationReport';
 import { ReEvaluationInterface } from './ReEvaluationInterface';
 import { InterviewMethodComparison } from './InterviewMethodComparison';
+import { ProctoringDashboard } from './ProctoringDashboard';
 import { downloadCertificate } from '../utils/certificateGenerator';
 
 interface AdminDashboardProps {
@@ -23,11 +24,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null);
   const [showDetailedReport, setShowDetailedReport] = useState(false);
   const [showReEvaluation, setShowReEvaluation] = useState(false);
+  const [showProctoringDashboard, setShowProctoringDashboard] = useState(false);
 
   const completedSessions = sessions.filter(s => s.status === 'evaluated');
   const averageScore = completedSessions.length > 0 
     ? Math.round(completedSessions.reduce((sum, s) => sum + (s.score || 0), 0) / completedSessions.length)
     : 0;
+
+  // Proctoring statistics
+  const proctoredSessions = sessions.filter(s => s.proctoring?.enabled);
+  const violationCount = sessions.reduce((sum, s) => sum + (s.proctoring?.violations.length || 0), 0);
 
   // Detect duplicate certificates
   const detectDuplicates = () => {
@@ -54,6 +60,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleReEvaluate = (session: InterviewSession) => {
     setSelectedSession(session);
     setShowReEvaluation(true);
+  };
+
+  const handleViewProctoring = (session: InterviewSession) => {
+    setSelectedSession(session);
+    setShowProctoringDashboard(true);
   };
 
   const handleReEvaluationComplete = (updatedSession: InterviewSession, newCertificate: Certificate) => {
@@ -122,7 +133,7 @@ Are you absolutely sure you want to continue?`;
   };
   const renderOverview = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="bg-blue-500 text-white rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -162,10 +173,46 @@ Are you absolutely sure you want to continue?`;
             <BarChart3 className="w-8 h-8 text-yellow-200" />
           </div>
         </div>
+        
+        <div className="bg-indigo-500 text-white rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-indigo-100">Proctored</p>
+              <p className="text-3xl font-bold">{proctoredSessions.length}</p>
+            </div>
+            <Shield className="w-8 h-8 text-indigo-200" />
+          </div>
+        </div>
       </div>
       
       <InterviewLinkGenerator onGenerateLink={onGenerateLink} />
       
+      {/* Proctoring Overview */}
+      {proctoredSessions.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <Shield className="w-5 h-5 mr-2" />
+            Proctoring Overview
+          </h3>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{proctoredSessions.length}</div>
+              <div className="text-sm text-blue-700">Proctored Sessions</div>
+            </div>
+            <div className="bg-red-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-red-600">{violationCount}</div>
+              <div className="text-sm text-red-700">Total Violations</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">
+                {proctoredSessions.filter(s => (s.proctoring?.violations.length || 0) === 0).length}
+              </div>
+              <div className="text-sm text-green-700">Clean Sessions</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Test Buttons */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Test Audio Interview</h3>
@@ -583,6 +630,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -609,6 +657,21 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {session.score ? `${session.score}%` : '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {session.proctoring?.enabled ? (
+                    <div className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-1" />
+                      <span className="text-xs text-green-600">
+                        {session.proctoring.violations.length > 0 ? 
+                          `${session.proctoring.violations.length} violations` : 
+                          'Clean'
+                        }
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not proctored</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {session.createdAt.toLocaleDateString()}
@@ -646,6 +709,16 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     <Download className="w-4 h-4" />
                     <span className="ml-1 text-xs">Download</span>
                   </button>
+                  {session.proctoring?.enabled && (
+                    <button 
+                      onClick={() => handleViewProctoring(session)}
+                      className="text-purple-600 hover:text-purple-900 mr-3 flex items-center"
+                      title="View Proctoring Data"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span className="ml-1 text-xs">Proctoring</span>
+                    </button>
+                  )}
                   {session.status === 'evaluated' && session.responses.some(r => r.transcript) && (
                     <button 
                       onClick={() => handleReEvaluate(session)}
@@ -791,6 +864,17 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
         />
       )}
 
+      {/* Proctoring Dashboard Modal */}
+      {showProctoringDashboard && selectedSession?.proctoring && (
+        <ProctoringDashboard
+          proctoringData={selectedSession.proctoring}
+          candidateName={selectedSession.candidateName}
+          onClose={() => {
+            setShowProctoringDashboard(false);
+            setSelectedSession(null);
+          }}
+        />
+      )}
       {/* Re-evaluation Interface Modal */}
       {showReEvaluation && selectedSession && (
         <ReEvaluationInterface
