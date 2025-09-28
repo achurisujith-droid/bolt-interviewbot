@@ -134,12 +134,8 @@ Be fair but thorough. Consider the position requirements and provide actionable 
     try {
       let content = result.choices[0].message.content;
       
-     // Use robust regex to extract JSON from markdown code blocks
-     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-     if (jsonMatch) {
-       content = jsonMatch[1].trim();
-     } else {
-       content = content.trim();
+      // Use robust JSON extraction
+      content = extractJSONFromResponse(content);
      }
       
       let evaluation;

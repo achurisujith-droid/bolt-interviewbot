@@ -493,12 +493,8 @@ Follow the custom instructions precisely and adjust your evaluation accordingly.
   try {
     let content = result.choices[0].message.content;
     
-    // Strip markdown code blocks if present
-    if (content.startsWith('```json')) {
-      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (content.startsWith('```')) {
-      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
+    // Use robust JSON extraction with fallback for truncated responses
+    content = extractJSONFromResponse(content);
     
     let evaluation;
     try {
@@ -525,4 +521,30 @@ Follow the custom instructions precisely and adjust your evaluation accordingly.
     console.error('Failed to parse GPT-4o response:', result.choices[0].message.content);
     throw new Error('Invalid response format from GPT-4o');
   }
+};
+
+// Robust JSON extraction helper function for ReEvaluationInterface
+const extractJSONFromResponse = (content: string): string => {
+  // First, try to extract from complete markdown code blocks
+  const completeJsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (completeJsonMatch) {
+    return completeJsonMatch[1].trim();
+  }
+  
+  // Handle partial markdown delimiters (truncated responses)
+  let cleanContent = content.trim();
+  
+  // Remove partial opening markdown
+  if (cleanContent.startsWith('```json')) {
+    cleanContent = cleanContent.replace(/^```json\s*/, '');
+  } else if (cleanContent.startsWith('```')) {
+    cleanContent = cleanContent.replace(/^```\s*/, '');
+  }
+  
+  // Remove partial closing markdown
+  if (cleanContent.endsWith('```')) {
+    cleanContent = cleanContent.replace(/\s*```$/, '');
+  }
+  
+  return cleanContent.trim();
 };

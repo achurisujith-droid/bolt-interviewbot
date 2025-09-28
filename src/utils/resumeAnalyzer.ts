@@ -105,12 +105,8 @@ Focus on RESUME CONTENT, not job title. Be factual and specific.
     const result = await response.json();
     let content = result.choices[0].message.content;
     
-    // Strip markdown code blocks if present
-    if (content.startsWith('```json')) {
-      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (content.startsWith('```')) {
-      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
+    // Use robust JSON extraction with fallback for truncated responses
+    content = extractJSONFromResponse(content);
     
     const analysis = JSON.parse(content);
     
@@ -221,12 +217,8 @@ Make questions SPECIFIC to their background, not generic.
     const result = await response.json();
     let content = result.choices[0].message.content;
     
-    // Strip markdown code blocks if present
-    if (content.startsWith('```json')) {
-      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (content.startsWith('```')) {
-      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
+    // Use robust JSON extraction
+    content = extractJSONFromResponse(content);
     
     const questions = JSON.parse(content);
     return questions;
@@ -326,12 +318,8 @@ Only ask follow-ups for important gaps, not every response.
     const result = await response.json();
     let content = result.choices[0].message.content;
     
-    // Strip markdown code blocks if present
-    if (content.startsWith('```json')) {
-      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (content.startsWith('```')) {
-      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
+    // Use robust JSON extraction
+    content = extractJSONFromResponse(content);
     
     const followUpData = JSON.parse(content);
     return followUpData.needsFollowUp ? followUpData.question : null;
@@ -339,6 +327,32 @@ Only ask follow-ups for important gaps, not every response.
     console.error('Follow-up generation failed:', error);
     return null; // No follow-ups on error
   }
+};
+
+// Robust JSON extraction helper function for resumeAnalyzer
+const extractJSONFromResponse = (content: string): string => {
+  // First, try to extract from complete markdown code blocks
+  const completeJsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (completeJsonMatch) {
+    return completeJsonMatch[1].trim();
+  }
+  
+  // Handle partial markdown delimiters (truncated responses)
+  let cleanContent = content.trim();
+  
+  // Remove partial opening markdown
+  if (cleanContent.startsWith('```json')) {
+    cleanContent = cleanContent.replace(/^```json\s*/, '');
+  } else if (cleanContent.startsWith('```')) {
+    cleanContent = cleanContent.replace(/^```\s*/, '');
+  }
+  
+  // Remove partial closing markdown
+  if (cleanContent.endsWith('```')) {
+    cleanContent = cleanContent.replace(/\s*```$/, '');
+  }
+  
+  return cleanContent.trim();
 };
 
 // Mock functions for fallback
