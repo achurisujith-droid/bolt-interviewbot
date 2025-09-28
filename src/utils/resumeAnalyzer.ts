@@ -6,7 +6,7 @@ const AI_CONFIG = {
 };
 
 // Analyze resume text using GPT-4o
-export const analyzeResume = async (resumeText: string, position: string): Promise<ResumeAnalysis> => {
+export const analyzeResume = async (resumeText: string): Promise<ResumeAnalysis> => {
   if (!AI_CONFIG.OPENAI_API_KEY) {
     throw new Error('OpenAI API key is required for resume analysis. Please add VITE_OPENAI_API_KEY to your .env file.');
   }
@@ -46,7 +46,7 @@ PRIORITY: Analyze the RESUME CONTENT first, ignore job title if it doesn't match
 **Resume Text:**
 ${truncatedResumeText}
 
-**Mentioned Position:** ${position} (ignore if not matching resume content)
+**Task:** Analyze this resume and extract the person's actual professional profile.
 
 Extract ACTUAL information from resume content:
 {
@@ -111,7 +111,7 @@ Focus on RESUME CONTENT, not job title. Be factual and specific.
     const analysis = JSON.parse(content);
     
     return {
-      actualRole: analysis.actualRole || position,
+      actualRole: analysis.actualRole || 'Professional',
       skills: analysis.skills || [],
       experience: analysis.experience || [],
       education: analysis.education || [],
@@ -132,51 +132,47 @@ Focus on RESUME CONTENT, not job title. Be factual and specific.
 
 // Generate customized questions based on resume analysis
 export const generateResumeBasedQuestions = async (
-  resumeAnalysis: ResumeAnalysis, 
-  position: string
+  resumeAnalysis: ResumeAnalysis
 ): Promise<any[]> => {
   if (!AI_CONFIG.OPENAI_API_KEY) {
     console.warn('⚠️ OpenAI API key not configured - falling back to standard questions');
     return []; // Return empty array to trigger fallback to standard questions
   }
 
-  const questionPrompt = `
-PRIORITY: Generate questions based on ACTUAL RESUME CONTENT, not job title.
+  // Get job requirements if available
+  const jobRequirements = localStorage.getItem('currentJobRequirements') || '';
+  const requirementsInfo = jobRequirements ? `\n**Job Requirements**: ${jobRequirements}` : '';
 
-**Resume Analysis:**
-- Actual Role: ${resumeAnalysis.actualRole || 'Not specified'}
+  const questionPrompt = `
+Generate 7 comprehensive interview questions based on this person's ACTUAL background from their resume.
+
+**Candidate Profile:**
+- Actual Role: ${resumeAnalysis.actualRole}
 - Experience: ${resumeAnalysis.yearsOfExperience} years (${resumeAnalysis.seniority} level)
 - Key Skills: ${resumeAnalysis.skills.slice(0, 8).join(', ')}
 - Technologies: ${resumeAnalysis.keyTechnologies.slice(0, 6).join(', ')}
-- Companies: ${resumeAnalysis.companies?.slice(0, 3).join(', ') || 'Not specified'}
-- Projects: ${resumeAnalysis.projects.slice(0, 3).join(', ')}
+- Companies: ${resumeAnalysis.companies?.slice(0, 3).join(', ') || 'Not specified'}${requirementsInfo}
 
-**Job Title Mentioned:** ${position} (use only if matches resume)
+Generate questions that:
+1. Test their ACTUAL skills and experience from resume
+2. Validate their claimed experience and projects
+3. Explore depth of knowledge in their technologies
+4. Ask about specific companies/projects mentioned
+5. Match their experience level (${resumeAnalysis.seniority})
+${jobRequirements ? '6. Assess fit for the job requirements provided' : '6. Evaluate their overall professional competency'}
 
-Generate 7 PERSONALIZED questions that:
-1. Test depth of knowledge in their ACTUAL technologies
-2. Ask about SPECIFIC companies/projects mentioned
-3. Validate claims made in resume
-4. Match their experience level (${resumeAnalysis.seniority})
-5. Explore their real work experience
-
-Example for FPGA engineer with 5 years:
-- "Tell me about your FPGA development experience at [specific company]"
-- "Explain a complex FPGA design challenge you solved"
-- "How do you approach timing closure in FPGA designs?"
-
-Return JSON:
+Return as JSON array with this exact format:
 [
   {
     "id": "q1",
-    "text": "Specific question about their actual experience",
-    "category": "technical/behavioral/experience",
-    "difficulty": "easy/medium/hard based on their level",
-    "resumeContext": "Which part of resume this validates"
+    "text": "Specific question about their actual experience/skills",
+    "category": "technical|behavioral|experience",
+    "difficulty": "easy|medium|hard",
+    "resumeContext": "What part of resume this validates"
   }
 ]
 
-Make questions SPECIFIC to their background, not generic.
+Make questions SPECIFIC to their background, not generic interview questions.
 `;
 
   try {
@@ -191,7 +187,7 @@ Make questions SPECIFIC to their background, not generic.
         messages: [
           {
             role: 'system',
-            content: 'Create interview questions. Respond only with valid JSON array.'
+            content: 'Generate interview questions based on actual resume content. Always respond with valid JSON.'
           },
           {
             role: 'user',
@@ -232,8 +228,7 @@ Make questions SPECIFIC to their background, not generic.
 export const generateFollowUpQuestion = async (
   originalQuestion: string,
   candidateResponse: string,
-  resumeAnalysis: ResumeAnalysis,
-  position: string
+  resumeAnalysis: ResumeAnalysis
 ): Promise<any | null> => {
   if (!AI_CONFIG.OPENAI_API_KEY) {
     return null; // No follow-ups without API key
@@ -356,7 +351,7 @@ const extractJSONFromResponse = (content: string): string => {
 };
 
 // Mock functions for fallback
-const mockAnalyzeResume = (resumeText: string, position: string): ResumeAnalysis => {
+const mockAnalyzeResume = (resumeText: string): ResumeAnalysis => {
   const words = resumeText.toLowerCase().split(/\s+/);
   
   const commonSkills = ['javascript', 'python', 'java', 'react', 'node.js', 'sql', 'git', 'aws'];
@@ -376,7 +371,7 @@ const mockAnalyzeResume = (resumeText: string, position: string): ResumeAnalysis
   };
 };
 
-const mockGenerateQuestions = (resumeAnalysis: ResumeAnalysis, position: string): any[] => {
+const mockGenerateQuestions = (resumeAnalysis: ResumeAnalysis): any[] => {
   return [
     {
       id: 'resume-q1',

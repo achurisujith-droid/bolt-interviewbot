@@ -12,12 +12,12 @@ export interface InterviewSession {
   id: string;
   candidateName: string;
   candidateEmail: string;
-  position: string;
   status: 'pending' | 'in-progress' | 'completed' | 'evaluated';
   createdAt: Date;
   completedAt?: Date;
   resumeText?: string;
   resumeAnalysis?: ResumeAnalysis;
+  jobRequirements?: string;
   score?: number;
   feedback?: string;
   responses: InterviewResponse[];

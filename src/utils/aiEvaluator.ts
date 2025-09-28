@@ -57,9 +57,9 @@ const transcribeWithOpenAI = async (audioBlob: Blob): Promise<string> => {
 };
 
 // Real OpenAI GPT-4o evaluation with detailed analysis
-const evaluateWithGPT4o = async (question: string, transcript: string, position: string, resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
+const evaluateWithGPT4o = async (question: string, transcript: string, actualRole: string, resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
   // Generate cache key for evaluation
-  const evaluationHash = await generateTextHash(`${question}:${transcript}:${position}`);
+  const evaluationHash = await generateTextHash(`${question}:${transcript}:${actualRole}`);
   const cacheKey = `evaluation:${evaluationHash}`;
   
   // Check cache first
@@ -72,14 +72,18 @@ const evaluateWithGPT4o = async (question: string, transcript: string, position:
   const contextInfo = resumeContext ? `\n**Resume Context**: ${resumeContext}` : '';
   const experienceInfo = resumeAnalysis ? `\n**Experience Level**: ${resumeAnalysis.yearsOfExperience} years (${resumeAnalysis.seniority} level)\n**Key Technologies**: ${resumeAnalysis.keyTechnologies?.join(', ') || 'N/A'}` : '';
 
+  // Get job requirements if available
+  const jobRequirements = localStorage.getItem('currentJobRequirements') || '';
+  const requirementsInfo = jobRequirements ? `\n**Job Requirements**: ${jobRequirements}` : '';
+
   const evaluationPrompt = `
-You are an expert interview evaluator with 20+ years of experience in hiring for ${position} roles.
+You are an expert interview evaluator analyzing a candidate's response based on their actual background.
 
 Evaluate this interview response comprehensively and provide REAL, DETAILED analysis:
 
 **Question**: "${question}"
 **Candidate's Response Transcript**: "${transcript}"
-**Position**: ${position}${contextInfo}${experienceInfo}
+**Candidate's Actual Role**: ${actualRole}${contextInfo}${experienceInfo}${requirementsInfo}
 
 IMPORTANT: Provide REAL evaluation based on the actual transcript content. Do NOT give generic scores.
 
@@ -87,7 +91,7 @@ Evaluation Criteria (each worth 25%):
 1. **Relevance & Content Quality** (25%): How well does the response address the question?
 2. **Communication Skills** (25%): Clarity, structure, and articulation
 3. **Technical/Professional Knowledge** (25%): Depth of understanding and expertise
-4. **Examples & Evidence** (25%): Use of specific examples, quantifiable results
+4. **Examples & Evidence** (25%): Use of specific examples, quantifiable results${jobRequirements ? '\n\n**Additional Context**: Evaluate how well their response aligns with the job requirements provided.' : ''}
 
 Analyze the ACTUAL content of the transcript and provide your evaluation in this exact JSON format:
 {
@@ -97,7 +101,7 @@ Analyze the ACTUAL content of the transcript and provide your evaluation in this
   "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
 }
 
-Be fair but thorough. Consider the position requirements and provide actionable feedback based on what the candidate actually said.
+Be fair but thorough. Consider their actual background and provide actionable feedback based on what the candidate actually said.
 `;
 
   return performanceOptimizer.optimizedOpenAIRequest(async (apiKey) => {
@@ -112,7 +116,7 @@ Be fair but thorough. Consider the position requirements and provide actionable 
         messages: [
           {
             role: 'system',
-            content: 'You are an expert interview evaluator. Always respond with valid JSON format. Be professional, fair, and constructive in your evaluations.'
+            content: 'You are an expert interview evaluator. Evaluate based on candidate actual background, not predetermined job positions. Always respond with valid JSON format.'
           },
           {
             role: 'user',
@@ -166,19 +170,19 @@ Be fair but thorough. Consider the position requirements and provide actionable 
 };
 
 // Generate interview questions using GPT-4o
-export const generateQuestionsWithAI = async (position: string, experienceLevel: string = 'mid-level'): Promise<any[]> => {
+export const generateQuestionsWithAI = async (actualRole: string, experienceLevel: string = 'mid-level'): Promise<any[]> => {
   if (!AI_CONFIG.OPENAI_API_KEY) {
     console.warn('OpenAI API key not configured, using default questions');
     return [];
   }
 
   const questionPrompt = `
-Generate 8 comprehensive interview questions for a ${experienceLevel} ${position} role.
+Generate 7 comprehensive interview questions for a ${experienceLevel} ${actualRole} professional.
 
 Requirements:
 - Mix of behavioral, technical, and situational questions
 - Progressive difficulty (start easier, get more challenging)
-- Relevant to ${position} responsibilities
+- Relevant to ${actualRole} responsibilities
 - Allow for detailed responses (30-90 seconds each)
 
 Return as JSON array with this exact format:
@@ -393,9 +397,9 @@ const speakWithBrowserTTS = (text: string): Promise<void> => {
 };
 
 // Main evaluation function using real AI
-export const evaluateResponse = async (response: InterviewResponse, position: string = 'Software Developer', resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths?: string[]; improvements?: string[] }> => {
+export const evaluateResponse = async (response: InterviewResponse, actualRole: string = 'General', resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths?: string[]; improvements?: string[] }> => {
   try {
-    console.log('🎯 Starting REAL AI evaluation for:', position);
+    console.log('🎯 Starting REAL AI evaluation for:', actualRole);
     console.log('🔑 API Key available:', !!AI_CONFIG.OPENAI_API_KEY);
     console.log('🎤 Audio blob available:', !!response.audioBlob);
     
@@ -418,7 +422,7 @@ export const evaluateResponse = async (response: InterviewResponse, position: st
     console.log('📝 Transcript:', transcript);
     
     console.log('🤖 Evaluating with GPT-4o...');
-    const evaluation = await evaluateWithGPT4o(response.question, transcript, position, resumeContext, resumeAnalysis);
+    const evaluation = await evaluateWithGPT4o(response.question, transcript, actualRole, resumeContext, resumeAnalysis);
     
     // Store transcript in response for display
     response.transcript = transcript;

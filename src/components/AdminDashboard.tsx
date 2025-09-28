@@ -13,7 +13,7 @@ import { downloadCertificate } from '../utils/certificateGenerator';
 interface AdminDashboardProps {
   sessions: InterviewSession[];
   certificates: Certificate[];
-  onGenerateLink: (candidateEmail: string, position: string) => string;
+  onGenerateLink: (candidateEmail: string) => string;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -42,7 +42,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const duplicates: { [key: string]: Certificate[] } = {};
     
     certificates.forEach(cert => {
-      const key = `${cert.candidateName}-${cert.position}`;
+      const key = `${cert.candidateName}`;
       if (!duplicates[key]) {
         duplicates[key] = [];
       }
@@ -232,13 +232,12 @@ Are you absolutely sure you want to continue?`;
                 id: `test-${Date.now()}`,
                 candidateName: 'Test Candidate',
                 candidateEmail: 'test@example.com',
-                position: 'Software Developer',
                 status: 'pending' as const,
                 createdAt: new Date(),
                 responses: []
               };
               // Trigger audio interview
-              window.location.href = `?session=${testSession.id}&name=${testSession.candidateName}&email=${testSession.candidateEmail}&position=${testSession.position}`;
+              window.location.href = `?session=${testSession.id}&name=${testSession.candidateName}&email=${testSession.candidateEmail}`;
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
           >
@@ -416,24 +415,22 @@ Are you absolutely sure you want to continue?`;
                   const missingSessions = completedSessions.filter(session => {
                     return !existingCerts.some(cert => {
                       const nameMatch = cert.candidateName === session.candidateName;
-                      const positionMatch = cert.position === session.position;
                       const scoreMatch = Math.abs(cert.score - (session.score || 0)) < 5; // Allow 5% difference
-                      return nameMatch && positionMatch && scoreMatch;
+                      return nameMatch && scoreMatch;
                     });
                   });
                   
                   // Additional check: don't generate if we already have certificates for this session
                   const filteredMissingSessions = missingSessions.filter(session => {
                     const existingCount = existingCerts.filter(cert => 
-                      cert.candidateName === session.candidateName && 
-                      cert.position === session.position
+                      cert.candidateName === session.candidateName
                     ).length;
                     return existingCount === 0; // Only generate if NO certificates exist
                   });
                   
                   console.log('🔍 Missing certificates for:', missingSessions.length, 'sessions');
                   missingSessions.forEach(session => {
-                    console.log(`📋 Missing cert for: ${session.candidateName} - ${session.position} - ${session.score}% (${session.interviewType || 'audio'})`);
+                    console.log(`📋 Missing cert for: ${session.candidateName} - ${session.resumeAnalysis?.actualRole || 'General'} - ${session.score}% (${session.interviewType || 'audio'})`);
                   });
                   
                   if (filteredMissingSessions.length > 0) {
@@ -442,7 +439,7 @@ Are you absolutely sure you want to continue?`;
                     const newCertificates = filteredMissingSessions.map(session => ({
                       id: `cert-recovered-${session.id}`,
                       candidateName: session.candidateName,
-                      position: session.position,
+                      position: session.resumeAnalysis?.actualRole || 'General Assessment',
                       score: session.score,
                       issueDate: new Date(session.completedAt || session.createdAt),
                       certificateNumber: `AI-CERT-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
@@ -647,7 +644,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidate</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role/Field</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
@@ -664,7 +661,9 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     <div className="text-sm text-gray-500">{session.candidateEmail}</div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{session.position}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {session.resumeAnalysis?.actualRole || 'General'}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     session.status === 'evaluated' ? 'bg-green-100 text-green-800' :
@@ -733,8 +732,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     onClick={() => {
                       try {
                         const relatedCertificate = certificates.find(c => 
-                          c.candidateName === session.candidateName && 
-                          c.position === session.position
+                          c.candidateName === session.candidateName
                         );
                         if (relatedCertificate) {
                           downloadCertificate(relatedCertificate, session);
@@ -783,7 +781,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidate</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role/Field</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Certificate No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue Date</th>
@@ -816,8 +814,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     onClick={() => {
                       try {
                         const relatedSession = sessions.find(s => 
-                          s.candidateName === cert.candidateName && 
-                          s.position === cert.position
+                          s.candidateName === cert.candidateName
                         );
                         downloadCertificate(cert, relatedSession);
                         alert('Detailed Evaluation Report downloaded successfully!');
