@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, TrendingUp, Award, Link, Copy, Mail, Phone, Building, Calendar, BarChart3, Target, CheckCircle, ExternalLink } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Award, Link, Copy, Mail, Phone, Building, Calendar, BarChart3, Target, CheckCircle, ExternalLink, Clock } from 'lucide-react';
 import { Recruiter, ReferralEarning } from '../../types/products';
 
 interface RecruiterPortalProps {
