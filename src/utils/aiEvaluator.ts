@@ -162,10 +162,6 @@ Be fair but thorough. Consider the position requirements and provide actionable 
     smartCache.set(cacheKey, finalEvaluation, azureConfig.cache.ttl.evaluations);
     
     return finalEvaluation;
-  } catch (parseError) {
-      console.error('Failed to parse GPT-4o response:', result.choices[0].message.content);
-      throw new Error('Invalid response format from GPT-4o');
-  }
   });
 };
 
