@@ -571,6 +571,48 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
         </div>
       </div>
 
+      {/* Recent Certificates Quick Access */}
+      {certificates.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Certificates</h3>
+          <div className="space-y-3">
+            {certificates
+              .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
+              .slice(0, 3)
+              .map(cert => {
+                const relatedSession = sessions.find(s => 
+                  s.candidateName === cert.candidateName && 
+                  s.position === cert.position
+                );
+                return (
+                  <div key={cert.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="font-medium text-gray-800">{cert.candidateName}</div>
+                      <div className="text-sm text-gray-600">{cert.position} • {cert.score}% • {cert.issueDate.toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-500">Certificate: {cert.certificateNumber}</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        try {
+                          downloadCertificate(cert, relatedSession);
+                          alert('✅ Certificate downloaded successfully!');
+                        } catch (error) {
+                          console.error('Certificate download failed:', error);
+                          alert('❌ Failed to download certificate. Please try again.');
+                        }
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center"
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Modals */}
       {showDetailedReport && selectedSession && (
         <DetailedEvaluationReport
@@ -653,14 +695,6 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     onClick={() => {
                       try {
                         console.log('🎯 Admin: Starting certificate download...');
-                        const relatedCertificate = certificates.find(c => 
-                          c.candidateName === session.candidateName && 
-                          c.position === session.position
-                        );
-                        console.log('🔍 Found certificate:', relatedCertificate);
-                        if (relatedCertificate) {
-                          const relatedSession = sessions.find(s => 
-                        console.log('🎯 Admin Sessions: Starting download...');
                         const relatedCertificate = certificates.find(c => 
                           c.candidateName === session.candidateName && 
                           c.position === session.position
@@ -753,13 +787,10 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                       try {
                         console.log('🎯 Admin Certificates: Starting download...');
                         console.log('📜 Certificate:', cert);
-                        console.log('🎯 Admin Certificates: Starting download...');
-                        console.log('📜 Certificate:', cert);
                         const relatedSession = sessions.find(s => 
                           s.candidateName === cert.candidateName && 
                           s.position === cert.position
                         );
-                        console.log('📊 Related session:', relatedSession);
                         console.log('📊 Related session:', relatedSession);
                         downloadCertificate(cert, relatedSession);
                         console.log('✅ Download completed');
@@ -820,45 +851,45 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
       </nav>
 
       <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 mt-4">
-          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-          <p className="text-gray-600">Manage interviews and monitor candidate performance</p>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8 mt-4">
+            <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+            <p className="text-gray-600">Manage interviews and monitor candidate performance</p>
+          </div>
+          
+          <div className="mb-6">
+            <nav className="flex space-x-8 bg-white rounded-lg shadow-md p-2">
+              {[
+                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'sessions', label: 'Sessions', icon: Users },
+                { id: 'certificates', label: 'Certificates', icon: Award },
+                { id: 'test-api', label: 'Test API', icon: Wifi },
+                { id: 'methods', label: 'Interview Methods', icon: Video }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4 mr-2" />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+          
+          <div>
+            {activeTab === 'overview' && renderOverview()}
+            {activeTab === 'sessions' && renderSessions()}
+            {activeTab === 'certificates' && renderCertificates()}
+            {activeTab === 'test-api' && <OpenAITest />}
+            {activeTab === 'methods' && <InterviewMethodComparison />}
+          </div>
         </div>
-        
-        <div className="mb-6">
-          <nav className="flex space-x-8 bg-white rounded-lg shadow-md p-2">
-            {[
-              { id: 'overview', label: 'Overview', icon: BarChart3 },
-              { id: 'sessions', label: 'Sessions', icon: Users },
-              { id: 'certificates', label: 'Certificates', icon: Award },
-              { id: 'test-api', label: 'Test API', icon: Wifi },
-              { id: 'methods', label: 'Interview Methods', icon: Video }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <tab.icon className="w-4 h-4 mr-2" />
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-        
-        <div>
-          {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'sessions' && renderSessions()}
-          {activeTab === 'certificates' && renderCertificates()}
-          {activeTab === 'test-api' && <OpenAITest />}
-          {activeTab === 'methods' && <InterviewMethodComparison />}
-        </div>
-      </div>
       </div>
 
       {/* Detailed Evaluation Report Modal */}
@@ -871,48 +902,6 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
           )}
           onClose={() => {
             setShowDetailedReport(false);
-        {/* Recent Certificates Quick Access */}
-        {certificates.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Certificates</h3>
-            <div className="space-y-3">
-              {certificates
-                .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
-                .slice(0, 3)
-                .map(cert => {
-                  const relatedSession = sessions.find(s => 
-                    s.candidateName === cert.candidateName && 
-                    s.position === cert.position
-                  );
-                  return (
-                    <div key={cert.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium text-gray-800">{cert.candidateName}</div>
-                        <div className="text-sm text-gray-600">{cert.position} • {cert.score}% • {cert.issueDate.toLocaleDateString()}</div>
-                        <div className="text-xs text-gray-500">Certificate: {cert.certificateNumber}</div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          try {
-                            downloadCertificate(cert, relatedSession);
-                            alert('✅ Certificate downloaded successfully!');
-                          } catch (error) {
-                            console.error('Certificate download failed:', error);
-                            alert('❌ Failed to download certificate. Please try again.');
-                          }
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center"
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Download
-                      </button>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-        
             setSelectedSession(null);
           }}
         />
