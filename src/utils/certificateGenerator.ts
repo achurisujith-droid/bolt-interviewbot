@@ -220,28 +220,37 @@ export const downloadCertificate = (certificate: Certificate, session?: any): vo
     const canvas = generateCertificateCanvas(certificate, session);
     console.log('🎨 Canvas generated successfully');
     
-    // Convert canvas to blob for better browser compatibility
-    canvas.toBlob((blob) => {
-      if (blob) {
-        console.log('📦 Blob created successfully, size:', blob.size);
-        const url = URL.createObjectURL(blob);
-        console.log('🔗 Object URL created:', url);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `AI-Interview-Evaluation-Report-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.certificateNumber}.png`;
-        console.log('📁 Download filename:', link.download);
-        document.body.appendChild(link);
-        console.log('🔗 Link added to DOM, triggering click...');
+    // Use direct canvas.toDataURL() method for immediate download
+    try {
+      const dataURL = canvas.toDataURL('image/png', 1.0);
+      console.log('🔗 Data URL created, length:', dataURL.length);
+      
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = `AI-Interview-Evaluation-Report-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.certificateNumber}.png`;
+      console.log('📁 Download filename:', link.download);
+      
+      // Force download by adding to DOM and clicking
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      console.log('🔗 Link added to DOM, triggering click...');
+      
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => {
         link.click();
         console.log('✅ Click triggered');
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        console.log('🧹 Cleanup completed');
-      } else {
-        console.error('❌ Failed to create blob from canvas');
-        throw new Error('Failed to generate evaluation report');
-      }
-    }, 'image/png', 1.0);
+        
+        // Cleanup after a short delay
+        setTimeout(() => {
+          document.body.removeChild(link);
+          console.log('🧹 Cleanup completed');
+        }, 100);
+      }, 10);
+      
+    } catch (canvasError) {
+      console.error('❌ Canvas to DataURL failed:', canvasError);
+      throw new Error('Failed to generate certificate image');
+    }
   } catch (error) {
     console.error('Evaluation report generation failed:', error);
     console.error('❌ Full error details:', error);
