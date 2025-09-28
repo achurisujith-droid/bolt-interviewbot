@@ -716,17 +716,23 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
                       
                       <button
                         onClick={async () => {
+                          console.log('🔍 Certificate download clicked');
+                          console.log('📜 Certificate data:', certificate);
+                          
                           try {
                             const relatedSession = JSON.parse(localStorage.getItem('interviewSessions') || '[]')
                               .find((s: any) => 
                                 s.candidateName === certificate.candidateName && 
                                 s.position === certificate.position
                               );
+                            console.log('📊 Related session:', relatedSession);
+                            console.log('📥 About to call downloadCertificate...');
                            await downloadCertificate(certificate, relatedSession);
+                            console.log('✅ downloadCertificate completed');
                             console.log('✅ Certificate downloaded successfully!');
                           } catch (error) {
                             console.error('Certificate download failed:', error);
-                            alert('❌ Failed to download certificate. Please try again.');
+                            alert(`❌ Certificate download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
                           }
                         }}
                         className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 flex items-center justify-center"
