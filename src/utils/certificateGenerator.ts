@@ -8,131 +8,170 @@ export const generateCertificateNumber = (): string => {
 };
 
 export const downloadCertificate = async (certificate: Certificate, session?: InterviewSession): Promise<void> => {
-  console.log('🎯 === CERTIFICATE DOWNLOAD START ===');
+  console.log('🎯 Starting certificate generation...');
   console.log('📜 Certificate:', certificate);
   console.log('📊 Session:', session);
-  console.log('🌐 Browser:', navigator.userAgent);
   
   try {
-    // Create comprehensive evaluation report
-    const reportContent = generateEvaluationReport(certificate, session);
-    console.log('📝 Report content generated, length:', reportContent.length);
+    // Create canvas for certificate
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
     
-    // Create blob
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
-    console.log('📦 Blob created, size:', blob.size, 'bytes');
-    
-    // Generate filename
-    const filename = `AI-Interview-Report-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.certificateNumber}.txt`;
-    console.log('📁 Filename:', filename);
-    
-    // Try multiple download methods
-    let downloadSuccess = false;
-    
-    // Method 1: Modern download API
-    if ('showSaveFilePicker' in window) {
-      try {
-        console.log('🔄 Trying File System Access API...');
-        const fileHandle = await (window as any).showSaveFilePicker({
-          suggestedName: filename,
-          types: [{
-            description: 'Text files',
-            accept: { 'text/plain': ['.txt'] }
-          }]
-        });
-        const writable = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        console.log('✅ File System Access API download successful');
-        downloadSuccess = true;
-      } catch (fsError) {
-        console.log('⚠️ File System Access API failed or cancelled:', fsError);
-      }
+    if (!ctx) {
+      throw new Error('Canvas context not available');
     }
     
-    // Method 2: Traditional blob download
-    if (!downloadSuccess) {
-      console.log('🔄 Trying traditional blob download...');
-      const url = URL.createObjectURL(blob);
-      console.log('🔗 Blob URL created:', url);
+    // Set canvas size (A4 proportions)
+    canvas.width = 1200;
+    canvas.height = 850;
+    
+    // Create gradient background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#667eea');
+    gradient.addColorStop(1, '#764ba2');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add decorative border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+    
+    // Inner border
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(60, 60, canvas.width - 120, canvas.height - 120);
+    
+    // Certificate title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 48px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CERTIFICATE OF COMPLETION', canvas.width / 2, 150);
+    
+    // Subtitle
+    ctx.font = '24px Arial, sans-serif';
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillText('AI-Powered Interview Assessment', canvas.width / 2, 190);
+    
+    // Candidate name
+    ctx.font = 'bold 36px Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(certificate.candidateName, canvas.width / 2, 280);
+    
+    // Achievement text
+    ctx.font = '20px Arial, sans-serif';
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillText('has successfully completed the', canvas.width / 2, 320);
+    
+    // Position
+    ctx.font = 'bold 32px Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(certificate.position, canvas.width / 2, 370);
+    
+    // Interview assessment text
+    ctx.font = '20px Arial, sans-serif';
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillText('Interview Assessment', canvas.width / 2, 410);
+    
+    // Score section
+    ctx.font = 'bold 28px Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`Final Score: ${certificate.score}%`, canvas.width / 2, 480);
+    
+    // Performance level
+    const performanceLevel = certificate.score >= 80 ? 'EXCELLENT' : 
+                            certificate.score >= 60 ? 'GOOD' : 'DEVELOPING';
+    const performanceColor = certificate.score >= 80 ? '#4ade80' : 
+                            certificate.score >= 60 ? '#fbbf24' : '#f87171';
+    
+    ctx.fillStyle = performanceColor;
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.fillText(`Performance: ${performanceLevel}`, canvas.width / 2, 520);
+    
+    // Certificate details
+    ctx.fillStyle = '#d0d0d0';
+    ctx.font = '16px Arial, sans-serif';
+    ctx.fillText(`Certificate Number: ${certificate.certificateNumber}`, canvas.width / 2, 580);
+    ctx.fillText(`Issue Date: ${certificate.issueDate.toLocaleDateString()}`, canvas.width / 2, 610);
+    
+    // Evaluation method
+    if (certificate.evaluationMethod) {
+      ctx.fillText(`Evaluation Method: ${certificate.evaluationMethod}`, canvas.width / 2, 640);
+    }
+    
+    // Add AI logo/badge
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial, sans-serif';
+    ctx.fillText('🤖 AI-POWERED EVALUATION', canvas.width / 2, 700);
+    
+    // Add verification info
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillStyle = '#c0c0c0';
+    ctx.fillText('This certificate can be verified using the certificate number above', canvas.width / 2, 750);
+    ctx.fillText('Generated by AI Interview Bot System', canvas.width / 2, 770);
+    
+    console.log('🎨 Certificate canvas created successfully');
+    
+    // Convert to blob and download
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        throw new Error('Failed to create certificate image');
+      }
       
+      console.log('📦 Certificate blob created, size:', blob.size);
+      
+      // Create filename
+      const filename = `AI-Interview-Certificate-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.certificateNumber}.png`;
+      console.log('📁 Filename:', filename);
+      
+      // Download the image
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
       link.style.display = 'none';
       
-      console.log('🔗 Download link created');
-      console.log('📁 Download attribute:', link.download);
-      console.log('🔗 Href attribute:', link.href);
-      
-      // Add to DOM
       document.body.appendChild(link);
-      console.log('➕ Link added to DOM');
+      console.log('🔗 Download link created and added to DOM');
       
-      // Force click with multiple attempts
-      setTimeout(() => {
-        console.log('🖱️ Attempting click...');
-        try {
-          link.click();
-          console.log('✅ Click executed');
-          downloadSuccess = true; // Set synchronously to prevent fallback
-        } catch (clickError) {
-          console.error('❌ Click failed:', clickError);
-        }
-        
-        // Cleanup
-        setTimeout(() => {
-          try {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            console.log('🧹 Cleanup completed');
-          } catch (cleanupError) {
-            console.error('⚠️ Cleanup failed:', cleanupError);
-          }
-        }, 1000);
-      }, 100);
+      // Trigger download
+      link.click();
+      console.log('🖱️ Download triggered');
       
-      // Set downloadSuccess immediately to prevent fallback race condition
-      downloadSuccess = true;
-    }
-    
-    // Method 3: Fallback - open in new window
-    if (!downloadSuccess) {
+      // Cleanup
       setTimeout(() => {
-        console.log('🔄 Trying fallback method - new window...');
-        try {
-          const dataUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(reportContent)}`;
-          const newWindow = window.open(dataUrl, '_blank');
-          if (newWindow) {
-            console.log('✅ Opened in new window');
-            alert('📄 Report opened in new window. Please save the file manually (Ctrl+S).');
-          } else {
-            throw new Error('Popup blocked');
-          }
-        } catch (fallbackError) {
-          console.error('❌ Fallback method failed:', fallbackError);
-          
-          // Final fallback - copy to clipboard
-          navigator.clipboard.writeText(reportContent).then(() => {
-            alert('📋 Report copied to clipboard! Please paste it into a text file.');
-            console.log('✅ Copied to clipboard as final fallback');
-          }).catch(() => {
-            alert('❌ All download methods failed. Please check browser settings and try again.');
-            console.error('❌ All download methods failed');
-          });
-        }
-      }, 2000);
-    }
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('🧹 Cleanup completed');
+      }, 1000);
+      
+      console.log('✅ Certificate download completed successfully');
+      
+    }, 'image/png', 1.0);
     
   } catch (error) {
-    console.error('❌ Certificate download failed:', error);
-    alert(`❌ Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('❌ Certificate generation failed:', error);
+    
+    // Fallback: Generate detailed text report
+    console.log('🔄 Falling back to text report...');
+    const reportContent = generateDetailedTextReport(certificate, session);
+    
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `AI-Interview-Report-${certificate.candidateName.replace(/\s+/g, '-')}.txt`;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    console.log('✅ Text report downloaded as fallback');
   }
-  
-  console.log('🎯 === CERTIFICATE DOWNLOAD END ===');
 };
 
-const generateEvaluationReport = (certificate: Certificate, session?: InterviewSession): string => {
+const generateDetailedTextReport = (certificate: Certificate, session?: InterviewSession): string => {
   const reportDate = new Date().toLocaleDateString();
   const reportTime = new Date().toLocaleTimeString();
   
