@@ -174,6 +174,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   };
 
   const handleEvaluationComplete = (updatedSession: InterviewSession, certificate: any) => {
+  const handleEvaluationComplete = async (updatedSession: InterviewSession, certificate: any) => {
     // Save the session and certificate to localStorage like in admin
     const existingSessions = JSON.parse(localStorage.getItem('interviewSessions') || '[]');
     const existingCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
