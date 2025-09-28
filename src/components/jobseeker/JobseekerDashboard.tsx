@@ -3,6 +3,7 @@ import { User, Award, Clock, TrendingUp, BookOpen, LogOut, Calendar, Star, Targe
 import { OfferingsGrid } from './OfferingsGrid';
 import { InterviewScheduler } from './InterviewScheduler';
 import { ProductPurchaseModal } from './ProductPurchaseModal';
+import { downloadCertificate } from '../../utils/certificateGenerator';
 import { InterviewProduct, InterviewSchedule, UserPurchase } from '../../types/products';
 import { interviewProducts } from '../../data/products';
 import { ResumeUpload } from '../ResumeUpload';
@@ -308,7 +309,6 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     const downloadCert = confirm(`🎉 Interview completed!\n\nFinal Score: ${updatedSession.score}%\nEvaluation Method: ${certificate.evaluationMethod || 'GPT-4o AI'}\n\nWould you like to download your detailed evaluation report now?`);
     if (downloadCert) {
       try {
-        const { downloadCertificate } = await import('../../utils/certificateGenerator');
         downloadCertificate(certificate, updatedSession);
         console.log('📄 Certificate downloaded successfully');
       } catch (error) {
@@ -717,14 +717,13 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
                       <button
                         onClick={async () => {
                           try {
-                            const { downloadCertificate } = await import('../../utils/certificateGenerator');
                             const relatedSession = JSON.parse(localStorage.getItem('interviewSessions') || '[]')
                               .find((s: any) => 
                                 s.candidateName === certificate.candidateName && 
                                 s.position === certificate.position
                               );
                             downloadCertificate(certificate, relatedSession);
-                            alert('✅ Certificate downloaded successfully!');
+                            console.log('✅ Certificate downloaded successfully!');
                           } catch (error) {
                             console.error('Certificate download failed:', error);
                             alert('❌ Failed to download certificate. Please try again.');
