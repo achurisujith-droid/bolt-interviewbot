@@ -120,8 +120,11 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
   const handleDownloadCertificate = () => {
     if (certificate) {
       try {
+        console.log('🎯 Evaluation: Starting certificate download...');
+        console.log('📜 Certificate:', certificate);
+        console.log('📊 Session:', evaluatedSession);
         downloadCertificate(certificate, evaluatedSession);
-        alert('✅ Detailed Evaluation Report downloaded successfully!');
+        console.log('✅ Download function called');
       } catch (error) {
         console.error('Evaluation report download failed:', error);
         alert('❌ Failed to download evaluation report. Please try again.');

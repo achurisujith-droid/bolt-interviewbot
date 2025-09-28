@@ -171,8 +171,11 @@ Apply entry-level evaluation standards:
   const handleDownloadNewCertificate = () => {
     if (newCertificate) {
       try {
+        console.log('🎯 Re-evaluation: Starting certificate download...');
+        console.log('📜 New certificate:', newCertificate);
+        console.log('📊 New session:', newSession);
         downloadCertificate(newCertificate, newSession);
-        alert('✅ New detailed evaluation report downloaded successfully!');
+        console.log('✅ Download function called');
       } catch (error) {
         console.error('Evaluation report download failed:', error);
         alert('❌ Failed to download evaluation report. Please try again.');

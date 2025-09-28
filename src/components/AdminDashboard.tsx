@@ -660,6 +660,14 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                         console.log('🔍 Found certificate:', relatedCertificate);
                         if (relatedCertificate) {
                           const relatedSession = sessions.find(s => 
+                        console.log('🎯 Admin Sessions: Starting download...');
+                        const relatedCertificate = certificates.find(c => 
+                          c.candidateName === session.candidateName && 
+                          c.position === session.position
+                        );
+                        console.log('🔍 Found certificate:', relatedCertificate);
+                        if (relatedCertificate) {
+                          const relatedSession = sessions.find(s => 
                             s.candidateName === session.candidateName && 
                             s.position === session.position
                           );
@@ -745,10 +753,13 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                       try {
                         console.log('🎯 Admin Certificates: Starting download...');
                         console.log('📜 Certificate:', cert);
+                        console.log('🎯 Admin Certificates: Starting download...');
+                        console.log('📜 Certificate:', cert);
                         const relatedSession = sessions.find(s => 
                           s.candidateName === cert.candidateName && 
                           s.position === cert.position
                         );
+                        console.log('📊 Related session:', relatedSession);
                         console.log('📊 Related session:', relatedSession);
                         downloadCertificate(cert, relatedSession);
                         console.log('✅ Download completed');
