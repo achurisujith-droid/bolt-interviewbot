@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video, Shield, Camera } from 'lucide-react';
+import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video, Shield, Camera, MessageSquare } from 'lucide-react';
 import { InterviewSession, Certificate } from '../types/interview';
 import { InterviewLinkGenerator } from './InterviewLinkGenerator';
 import { OpenAITest } from './OpenAITest';
@@ -81,6 +81,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setSelectedSession(null);
     alert(`✅ Re-evaluation complete! New score: ${updatedSession.score}%`);
   };
+  
   const clearAllData = () => {
     const confirmMessage = `⚠️ DANGER: This will permanently delete ALL data:
     
@@ -138,6 +139,7 @@ Are you absolutely sure you want to continue?`;
     };
     reader.readAsText(file);
   };
+  
   const renderOverview = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -356,7 +358,7 @@ Are you absolutely sure you want to continue?`;
                     console.log(`   Status: ${session.status}`);
                     console.log(`   Completed: ${session.completedAt}`);
                     console.log(`   Responses: ${session.responses?.length || 0}`);
-                   console.log(`   Interview Type: ${session.interviewType || 'audio'}`);
+                    console.log(`   Interview Type: ${session.interviewType || 'audio'}`);
                   });
                 } catch (e) {
                   console.error('❌ Sessions data corrupted:', e);
@@ -392,24 +394,24 @@ Are you absolutely sure you want to continue?`;
                   const sessions = JSON.parse(sessionsData);
                   const existingCerts = certificatesData ? JSON.parse(certificatesData) : [];
                   
-                 // Look for ALL sessions with scores, including video interviews
-                 const completedSessions = sessions.filter(s => {
-                   const hasScore = s.score !== undefined && s.score !== null;
-                   const isCompleted = s.status === 'completed' || s.status === 'evaluated';
-                   const hasResponses = s.responses && s.responses.length > 0;
-                   
-                   console.log(`🔍 Checking session ${s.candidateName}:`, {
-                     hasScore,
-                     score: s.score,
-                     isCompleted,
-                     status: s.status,
-                     hasResponses,
-                     responseCount: s.responses?.length || 0,
-                     interviewType: s.interviewType || 'audio'
-                   });
-                   
-                   return hasScore && (isCompleted || hasResponses);
-                 });
+                  // Look for ALL sessions with scores, including video interviews
+                  const completedSessions = sessions.filter(s => {
+                    const hasScore = s.score !== undefined && s.score !== null;
+                    const isCompleted = s.status === 'completed' || s.status === 'evaluated';
+                    const hasResponses = s.responses && s.responses.length > 0;
+                    
+                    console.log(`🔍 Checking session ${s.candidateName}:`, {
+                      hasScore,
+                      score: s.score,
+                      isCompleted,
+                      status: s.status,
+                      hasResponses,
+                      responseCount: s.responses?.length || 0,
+                      interviewType: s.interviewType || 'audio'
+                    });
+                    
+                    return hasScore && (isCompleted || hasResponses);
+                  });
                   
                   const missingSessions = completedSessions.filter(session => {
                     return !existingCerts.some(cert => {
@@ -427,13 +429,12 @@ Are you absolutely sure you want to continue?`;
                       cert.position === session.position
                     ).length;
                     return existingCount === 0; // Only generate if NO certificates exist
-                    );
                   });
                   
                   console.log('🔍 Missing certificates for:', missingSessions.length, 'sessions');
-                 missingSessions.forEach(session => {
-                   console.log(`📋 Missing cert for: ${session.candidateName} - ${session.position} - ${session.score}% (${session.interviewType || 'audio'})`);
-                 });
+                  missingSessions.forEach(session => {
+                    console.log(`📋 Missing cert for: ${session.candidateName} - ${session.position} - ${session.score}% (${session.interviewType || 'audio'})`);
+                  });
                   
                   if (filteredMissingSessions.length > 0) {
                     console.log('🔧 Generating missing certificates...');
@@ -444,41 +445,39 @@ Are you absolutely sure you want to continue?`;
                       position: session.position,
                       score: session.score,
                       issueDate: new Date(session.completedAt || session.createdAt),
-                     certificateNumber: `AI-CERT-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-                     evaluationMethod: session.interviewType === 'video' ? 'Video Interview with AI Agent' : 'Audio Interview with GPT-4o'
+                      certificateNumber: `AI-CERT-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+                      evaluationMethod: session.interviewType === 'video' ? 'Video Interview with AI Agent' : 'Audio Interview with GPT-4o'
                     }));
                     
                     const allCertificates = [...existingCerts, ...newCertificates];
                     localStorage.setItem('certificates', JSON.stringify(allCertificates));
                     
                     console.log('✅ Generated', newCertificates.length, 'missing certificates');
-                   
-                   const videoInterviews = newCertificates.filter(c => c.evaluationMethod?.includes('Video'));
-                   const audioInterviews = newCertificates.filter(c => !c.evaluationMethod?.includes('Video'));
-                   
-                   let message = `🔧 Generated ${newCertificates.length} missing certificates!\n\n`;
-                   if (videoInterviews.length > 0) {
-                     message += `📹 Video Interviews: ${videoInterviews.length}\n`;
-                     videoInterviews.forEach(c => {
-                       message += `   • ${c.candidateName} - ${c.score}%\n`;
-                     });
-                   }
-                   if (audioInterviews.length > 0) {
-                     message += `🎤 Audio Interviews: ${audioInterviews.length}\n`;
-                     audioInterviews.forEach(c => {
-                       message += `   • ${c.candidateName} - ${c.score}%\n`;
-                     });
-                   }
-                   message += `\nRefresh to see them in the certificates list!`;
-                   
-                   alert(message);
+                    
+                    const videoInterviews = newCertificates.filter(c => c.evaluationMethod?.includes('Video'));
+                    const audioInterviews = newCertificates.filter(c => !c.evaluationMethod?.includes('Video'));
+                    
+                    let message = `🔧 Generated ${newCertificates.length} missing certificates!\n\n`;
+                    if (videoInterviews.length > 0) {
+                      message += `📹 Video Interviews: ${videoInterviews.length}\n`;
+                      videoInterviews.forEach(c => {
+                        message += `   • ${c.candidateName} - ${c.score}%\n`;
+                      });
+                    }
+                    if (audioInterviews.length > 0) {
+                      message += `🎤 Audio Interviews: ${audioInterviews.length}\n`;
+                      audioInterviews.forEach(c => {
+                        message += `   • ${c.candidateName} - ${c.score}%\n`;
+                      });
+                    }
+                    message += `\nRefresh to see them in the certificates list!`;
+                    
+                    alert(message);
                     
                     setTimeout(() => window.location.reload(), 1000);
+                  } else {
                     console.log('✅ No missing certificates found');
                     alert('✅ All completed sessions already have certificates. No duplicates generated.');
-                  }
-                } else {
-                    return;
                   }
                 } catch (error) {
                   console.error('❌ Failed to generate missing certificates:', error);
@@ -655,7 +654,6 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -682,21 +680,6 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {session.score ? `${session.score}%` : '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {session.proctoring?.enabled ? (
-                    <div className="flex items-center">
-                      <Shield className="w-4 h-4 text-green-600 mr-1" />
-                      <span className="text-xs text-green-600">
-                        {session.proctoring.violations.length > 0 ? 
-                          `${session.proctoring.violations.length} violations` : 
-                          'Clean'
-                        }
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">Not proctored</span>
-                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {session.proctoring?.enabled ? (
@@ -773,16 +756,6 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     <Download className="w-4 h-4" />
                     <span className="ml-1 text-xs">Download</span>
                   </button>
-                  {session.proctoring?.enabled && (
-                    <button 
-                      onClick={() => handleViewProctoring(session)}
-                      className="text-purple-600 hover:text-purple-900 mr-3 flex items-center"
-                      title="View Proctoring Data"
-                    >
-                      <Camera className="w-4 h-4" />
-                      <span className="ml-1 text-xs">Proctoring</span>
-                    </button>
-                  )}
                   {session.status === 'evaluated' && session.responses.some(r => r.transcript) && (
                     <button 
                       onClick={() => handleReEvaluate(session)}
@@ -948,18 +921,6 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
             setSelectedSession(null);
           }}
           onReEvaluationComplete={handleReEvaluationComplete}
-        />
-      )}
-
-      {/* Proctoring Dashboard Modal */}
-      {showProctoringDashboard && selectedSession?.proctoring && (
-        <ProctoringDashboard
-          proctoringData={selectedSession.proctoring}
-          candidateName={selectedSession.candidateName}
-          onClose={() => {
-            setShowProctoringDashboard(false);
-            setSelectedSession(null);
-          }}
         />
       )}
 
