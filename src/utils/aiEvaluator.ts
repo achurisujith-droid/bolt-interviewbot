@@ -57,7 +57,7 @@ const transcribeWithOpenAI = async (audioBlob: Blob): Promise<string> => {
 };
 
 // Real OpenAI GPT-4o evaluation with detailed analysis
-const evaluateWithGPT4o = async (question: string, transcript: string, position: string, resumeContext?: string): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
+const evaluateWithGPT4o = async (question: string, transcript: string, position: string, resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
   // Generate cache key for evaluation
   const evaluationHash = await generateTextHash(`${question}:${transcript}:${position}`);
   const cacheKey = `evaluation:${evaluationHash}`;
@@ -70,31 +70,34 @@ const evaluateWithGPT4o = async (question: string, transcript: string, position:
   }
 
   const contextInfo = resumeContext ? `\n**Resume Context**: ${resumeContext}` : '';
+  const experienceInfo = resumeAnalysis ? `\n**Experience Level**: ${resumeAnalysis.yearsOfExperience} years (${resumeAnalysis.seniority} level)\n**Key Technologies**: ${resumeAnalysis.keyTechnologies?.join(', ') || 'N/A'}` : '';
 
   const evaluationPrompt = `
-You are an expert interview evaluator with 20+ years of experience in hiring for ${position} roles. 
+You are an expert interview evaluator with 20+ years of experience in hiring for ${position} roles.
 
-Evaluate this interview response comprehensively:
+Evaluate this interview response comprehensively and provide REAL, DETAILED analysis:
 
 **Question**: "${question}"
-**Candidate's Response**: "${transcript}"
-**Position**: ${position}${contextInfo}
+**Candidate's Response Transcript**: "${transcript}"
+**Position**: ${position}${contextInfo}${experienceInfo}
 
-Evaluation Criteria:
+IMPORTANT: Provide REAL evaluation based on the actual transcript content. Do NOT give generic scores.
+
+Evaluation Criteria (each worth 25%):
 1. **Relevance & Content Quality** (25%): How well does the response address the question?
 2. **Communication Skills** (25%): Clarity, structure, and articulation
 3. **Technical/Professional Knowledge** (25%): Depth of understanding and expertise
 4. **Examples & Evidence** (25%): Use of specific examples, quantifiable results
 
-Provide your evaluation in this exact JSON format:
+Analyze the ACTUAL content of the transcript and provide your evaluation in this exact JSON format:
 {
   "score": <number between 0-100>,
-  "feedback": "<comprehensive 2-3 sentence feedback explaining the score>",
+  "feedback": "<comprehensive 2-3 sentence feedback explaining the score based on actual transcript content>",
   "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
   "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
 }
 
-Be fair but thorough. Consider the position requirements and provide actionable feedback.
+Be fair but thorough. Consider the position requirements and provide actionable feedback based on what the candidate actually said.
 `;
 
   return performanceOptimizer.optimizedOpenAIRequest(async (apiKey) => {
@@ -267,6 +270,13 @@ Make questions engaging and allow candidates to showcase their skills and experi
 
 // Text-to-Speech for asking questions
 export const speakQuestion = async (questionText: string): Promise<void> => {
+  if (!questionText || questionText.trim().length === 0) {
+    console.warn('Empty question text provided to speakQuestion');
+    return;
+  }
+  
+  console.log('🔊 Speaking question:', questionText);
+  
   // Generate cache key for TTS
   const textHash = await generateTextHash(questionText);
   const cacheKey = `tts:${textHash}`;
@@ -280,6 +290,7 @@ export const speakQuestion = async (questionText: string): Promise<void> => {
 
   return performanceOptimizer.optimizedOpenAIRequest(async (apiKey) => {
     try {
+      console.log('🎤 Using OpenAI TTS for question:', questionText.substring(0, 100) + '...');
       const response = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
@@ -288,7 +299,7 @@ export const speakQuestion = async (questionText: string): Promise<void> => {
         },
         body: JSON.stringify({
           model: 'tts-1',
-          input: `Hello! Here's your next interview question: ${questionText}. Please take your time to think and provide a detailed response.`,
+          input: questionText, // Use the exact question text without modification
           voice: 'alloy', // Professional, neutral voice
           speed: 0.9, // Slightly slower for clarity
         }),
@@ -308,7 +319,7 @@ export const speakQuestion = async (questionText: string): Promise<void> => {
       return playAudioFromUrl(audioUrl);
     } catch (error) {
       console.error('OpenAI TTS failed, using browser TTS:', error);
-      return speakWithBrowserTTS(questionText);
+      return speakWithBrowserTTS(questionText); // Pass exact question text
     }
   });
 };
@@ -351,9 +362,10 @@ const speakWithBrowserTTS = (text: string): Promise<void> => {
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(
-      `Hello! Here's your next interview question: ${text}. Please take your time to think and provide a detailed response.`
-    );
+    console.log('🔊 Using browser TTS for question:', text.substring(0, 100) + '...');
+    
+    // Use the exact question text without modification
+    const utterance = new SpeechSynthesisUtterance(text);
     
     utterance.rate = 0.8;
     utterance.pitch = 1;
@@ -379,9 +391,10 @@ const speakWithBrowserTTS = (text: string): Promise<void> => {
 };
 
 // Main evaluation function using real AI
-export const evaluateResponse = async (response: InterviewResponse, position: string = 'Software Developer', resumeContext?: string): Promise<{ score: number; feedback: string; strengths?: string[]; improvements?: string[] }> => {
+export const evaluateResponse = async (response: InterviewResponse, position: string = 'Software Developer', resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths?: string[]; improvements?: string[] }> => {
   try {
     if (!AI_CONFIG.OPENAI_API_KEY) {
+      console.warn('⚠️ No OpenAI API key found - using mock evaluation');
       throw new Error('OpenAI API key is required for AI evaluation. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
 
@@ -399,7 +412,7 @@ export const evaluateResponse = async (response: InterviewResponse, position: st
     console.log('📝 Transcript:', transcript);
     
     console.log('🤖 Evaluating with GPT-4o...');
-    const evaluation = await evaluateWithGPT4o(response.question, transcript, position, resumeContext);
+    const evaluation = await evaluateWithGPT4o(response.question, transcript, position, resumeContext, resumeAnalysis);
     
     // Store transcript in response for display
     response.transcript = transcript;
@@ -416,6 +429,8 @@ export const evaluateResponse = async (response: InterviewResponse, position: st
 
 // Enhanced mock evaluator for fallback
 const mockEvaluateResponse = async (response: InterviewResponse): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
+  console.log('⚠️ Using mock evaluation - OpenAI API not available or failed');
+  
   // Simulate AI processing delay
   await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
   
@@ -437,9 +452,11 @@ const mockEvaluateResponse = async (response: InterviewResponse): Promise<{ scor
   }
   
   // Mock scoring algorithm based on duration and randomness
-  let baseScore = Math.min(85, Math.max(45, duration * 1.8));
+  let baseScore = Math.min(85, Math.max(45, duration * 1.5)); // More realistic scoring
   const variance = (Math.random() - 0.5) * 15;
   const finalScore = Math.max(30, Math.min(95, Math.round(baseScore + variance)));
+  
+  console.log(`📊 Mock evaluation: duration=${duration}s, baseScore=${baseScore}, finalScore=${finalScore}`);
   
   // Generate realistic feedback based on score
   let feedback = '';
@@ -465,7 +482,7 @@ const mockEvaluateResponse = async (response: InterviewResponse): Promise<{ scor
   }
   
   // Add mock transcript for display
-  response.transcript = `[Mock transcript - Audio duration: ${Math.round(duration)}s. In a real implementation, this would show the actual speech-to-text conversion of the candidate's response.]`;
+  response.transcript = `[Mock transcript - Audio duration: ${Math.round(duration)}s. Real transcript requires OpenAI API key. Add VITE_OPENAI_API_KEY to .env file for actual speech-to-text conversion.]`;
   
   return { score: finalScore, feedback, strengths, improvements };
 };

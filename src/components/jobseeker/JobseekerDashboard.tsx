@@ -174,6 +174,25 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   };
 
   const handleEvaluationComplete = (updatedSession: InterviewSession, certificate: any) => {
+    // Save the session and certificate to localStorage like in admin
+    const existingSessions = JSON.parse(localStorage.getItem('interviewSessions') || '[]');
+    const existingCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+    
+    // Update or add the session
+    const sessionIndex = existingSessions.findIndex((s: any) => s.id === updatedSession.id);
+    if (sessionIndex >= 0) {
+      existingSessions[sessionIndex] = updatedSession;
+    } else {
+      existingSessions.push(updatedSession);
+    }
+    
+    // Add the certificate
+    existingCertificates.push(certificate);
+    
+    // Save to localStorage
+    localStorage.setItem('interviewSessions', JSON.stringify(existingSessions));
+    localStorage.setItem('certificates', JSON.stringify(existingCertificates));
+    
     // Mark purchase as used
     if (selectedProduct) {
       setUserPurchases(prev => prev.map(purchase => 
@@ -196,7 +215,17 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     setSelectedProduct(null);
     setActiveTab('dashboard');
     
-    alert(`🎉 Interview completed! Score: ${updatedSession.score}%`);
+    // Show completion with download option
+    const downloadCert = confirm(`🎉 Interview completed! Score: ${updatedSession.score}%\n\nWould you like to download your detailed evaluation report now?`);
+    if (downloadCert) {
+      try {
+        const { downloadCertificate } = await import('../../utils/certificateGenerator');
+        downloadCertificate(certificate, updatedSession);
+      } catch (error) {
+        console.error('Certificate download failed:', error);
+        alert('❌ Failed to download certificate. You can download it later from the certificates section.');
+      }
+    }
   };
 
   const handleSchedule = (schedule: Omit<InterviewSchedule, 'id' | 'createdAt'>) => {

@@ -50,7 +50,8 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
           const evaluation = await evaluateResponse(
             response, 
             session.position, 
-            session.resumeAnalysis?.actualRole || session.position
+            session.resumeAnalysis?.actualRole || session.position,
+            session.resumeAnalysis
           );
           
           updatedResponses[i] = {
@@ -119,10 +120,10 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
     if (certificate) {
       try {
         downloadCertificate(certificate, evaluatedSession);
-        alert('Detailed Evaluation Report downloaded successfully!');
+        alert('✅ Detailed Evaluation Report downloaded successfully!');
       } catch (error) {
         console.error('Evaluation report download failed:', error);
-        alert('Failed to download evaluation report. Please try again.');
+        alert('❌ Failed to download evaluation report. Please try again.');
       }
     }
   };
