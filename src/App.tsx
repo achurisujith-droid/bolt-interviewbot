@@ -65,10 +65,9 @@ function App() {
     const sessionId = urlParams.get('session');
     const candidateName = urlParams.get('name');
     const candidateEmail = urlParams.get('email');
-    const position = urlParams.get('position');
 
-    if (sessionId && candidateName && candidateEmail && position) {
-      console.log('🔗 Interview link detected:', { sessionId, candidateName, candidateEmail, position });
+    if (sessionId && candidateName && candidateEmail) {
+      console.log('🔗 Interview link detected:', { sessionId, candidateName, candidateEmail });
       
       // Check if session already exists
       const existingSession = sessions.find(s => s.id === sessionId);
@@ -81,7 +80,6 @@ function App() {
           id: sessionId,
           candidateName,
           candidateEmail,
-          position,
           status: 'pending',
           createdAt: new Date(),
           responses: []
@@ -117,7 +115,7 @@ function App() {
     }
   }, [certificates, dataLoaded]);
 
-  const generateInterviewLink = (candidateEmail: string, position: string): string => {
+  const generateInterviewLink = (candidateEmail: string): string => {
     const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const candidateName = candidateEmail.split('@')[0].replace(/[._]/g, ' ');
     
@@ -125,8 +123,7 @@ function App() {
     const params = new URLSearchParams({
       session: sessionId,
       name: candidateName,
-      email: candidateEmail,
-      position: position
+      email: candidateEmail
     });
     
     return `${baseUrl}?${params.toString()}`;
@@ -137,7 +134,7 @@ function App() {
     
     try {
       console.log('📄 Analyzing resume...');
-      const analysis = await analyzeResume(resumeText, currentSession.position);
+      const analysis = await analyzeResume(resumeText);
       setResumeAnalysis(analysis);
       
       const updatedSession = {

@@ -2,22 +2,27 @@ import React, { useState } from 'react';
 import { Link, Users, Calendar, Send } from 'lucide-react';
 
 interface InterviewLinkGeneratorProps {
-  onGenerateLink: (candidateEmail: string, position: string) => string;
+  onGenerateLink: (candidateEmail: string) => string;
 }
 
 export const InterviewLinkGenerator: React.FC<InterviewLinkGeneratorProps> = ({ onGenerateLink }) => {
   const [candidateEmail, setCandidateEmail] = useState('');
-  const [position, setPosition] = useState('');
+  const [jobRequirements, setJobRequirements] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGenerateLink = async () => {
-    if (!candidateEmail || !position) return;
+    if (!candidateEmail) return;
     
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
     
-    const link = onGenerateLink(candidateEmail, position);
+    // Store job requirements in localStorage for the interview
+    if (jobRequirements.trim()) {
+      localStorage.setItem('currentJobRequirements', jobRequirements.trim());
+    }
+    
+    const link = onGenerateLink(candidateEmail);
     setGeneratedLink(link);
     setIsLoading(false);
   };
@@ -52,20 +57,23 @@ export const InterviewLinkGenerator: React.FC<InterviewLinkGeneratorProps> = ({ 
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Position
+            Job Requirements (Optional)
           </label>
-          <input
-            type="text"
-            value={position}
-            onChange={(e) => setPosition(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            placeholder="Software Developer"
+          <textarea
+            value={jobRequirements}
+            onChange={(e) => setJobRequirements(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+            rows={4}
+            placeholder="Describe the job requirements, skills needed, experience level, etc. This will be used to evaluate the candidate's resume fit."
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Leave empty for general resume evaluation without specific job requirements
+          </p>
         </div>
         
         <button
           onClick={handleGenerateLink}
-          disabled={!candidateEmail || !position || isLoading}
+          disabled={!candidateEmail || isLoading}
           className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center"
         >
           {isLoading ? (

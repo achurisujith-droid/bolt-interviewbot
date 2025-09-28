@@ -12,7 +12,6 @@ import { ProctoringWarning } from './ProctoringWarning';
 interface InterviewInterfaceProps {
   sessionId: string;
   candidateName: string;
-  position: string;
   resumeAnalysis?: ResumeAnalysis;
   onComplete: (responses: InterviewResponse[]) => void;
 }
@@ -20,7 +19,6 @@ interface InterviewInterfaceProps {
 export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
   sessionId,
   candidateName,
-  position,
   resumeAnalysis,
   onComplete
 }) => {
@@ -144,9 +142,9 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
       let generatedQuestions: Question[] = [];
       
       if (resumeAnalysis) {
-        console.log('📄 Attempting to generate resume-based questions for:', resumeAnalysis.actualRole || position);
+        console.log('📄 Attempting to generate resume-based questions for:', resumeAnalysis.actualRole);
         try {
-          const resumeQuestions = await generateResumeBasedQuestions(resumeAnalysis, position);
+          const resumeQuestions = await generateResumeBasedQuestions(resumeAnalysis);
           if (resumeQuestions && resumeQuestions.length > 0) {
             generatedQuestions = resumeQuestions;
             console.log('✅ Generated', generatedQuestions.length, 'personalized questions');
@@ -160,15 +158,15 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
       }
       
       if (generatedQuestions.length === 0) {
-        console.log('📝 Using standard questions for position:', position);
-        generatedQuestions = generateQuestionsForPosition(position);
+        console.log('📝 Using standard general questions');
+        generatedQuestions = defaultQuestions.slice(0, 7); // Use first 7 default questions
       }
       
       setQuestions(generatedQuestions);
     } catch (error) {
       console.error('Failed to load questions:', error);
-      console.log('🔄 Emergency fallback to standard questions');
-      setQuestions(generateQuestionsForPosition(position));
+      console.log('🔄 Emergency fallback to default questions');
+      setQuestions(defaultQuestions.slice(0, 7));
     } finally {
       setIsLoadingQuestions(false);
     }
@@ -363,7 +361,7 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
             )}
           </div>
           <p className="text-gray-600">Welcome, {candidateName}</p>
-          <p className="text-sm text-gray-500">Position: {position}</p>
+          <p className="text-sm text-gray-500">Resume-based Interview</p>
           {proctoringEnabled && (
             <p className="text-xs text-green-600 mt-1">🔍 Interview is being monitored for integrity</p>
           )}
@@ -503,7 +501,7 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
 
         {resumeAnalysis && (
           <div className="mt-6 text-center text-xs text-blue-600">
-            <p>📄 Questions personalized for {resumeAnalysis.actualRole || position} ({resumeAnalysis.yearsOfExperience} years experience)</p>
+            <p>📄 Questions personalized for {resumeAnalysis.actualRole} ({resumeAnalysis.yearsOfExperience} years experience)</p>
           </div>
         )}
 

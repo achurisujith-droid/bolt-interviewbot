@@ -43,8 +43,8 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
         try {
           const evaluation = await evaluateResponse(
             response, 
-            session.position, 
-            session.resumeAnalysis?.actualRole || session.position,
+            session.resumeAnalysis?.actualRole || 'General', 
+            session.resumeAnalysis?.actualRole || 'General',
             session.resumeAnalysis
           );
           
@@ -103,7 +103,7 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
     const generatedCertificate: Certificate = {
       id: `cert-${session.id}`,
       candidateName: session.candidateName,
-      position: session.position,
+      position: session.resumeAnalysis?.actualRole || 'General Assessment',
       score: overallScore,
       issueDate: new Date(),
       certificateNumber: generateCertificateNumber(),
