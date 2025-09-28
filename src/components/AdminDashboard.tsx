@@ -26,6 +26,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showDetailedReport, setShowDetailedReport] = useState(false);
   const [showReEvaluation, setShowReEvaluation] = useState(false);
   const [showProctoringDashboard, setShowProctoringDashboard] = useState(false);
+  const [showTranscriptViewer, setShowTranscriptViewer] = useState(false);
 
   const completedSessions = sessions.filter(s => s.status === 'evaluated');
   const averageScore = completedSessions.length > 0 
@@ -66,6 +67,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleViewProctoring = (session: InterviewSession) => {
     setSelectedSession(session);
     setShowProctoringDashboard(true);
+  };
+
+  const handleViewTranscripts = (session: InterviewSession) => {
+    setSelectedSession(session);
+    setShowTranscriptViewer(true);
   };
 
   const handleReEvaluationComplete = (updatedSession: InterviewSession, newCertificate: Certificate) => {
