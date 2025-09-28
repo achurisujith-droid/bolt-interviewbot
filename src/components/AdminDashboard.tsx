@@ -475,13 +475,10 @@ Are you absolutely sure you want to continue?`;
                     alert(message);
                     
                     setTimeout(() => window.location.reload(), 1000);
-                  } else {
-                    console.log('✅ No missing certificates found');
-                    alert('✅ All completed sessions already have certificates. No duplicates generated.');
+                    return;
                   }
                 } catch (error) {
                   console.error('❌ Failed to generate missing certificates:', error);
-                  alert('❌ Failed to check for missing certificates. Check console for details.');
                 }
               }
               
@@ -921,6 +918,18 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
             setSelectedSession(null);
           }}
           onReEvaluationComplete={handleReEvaluationComplete}
+        />
+      )}
+
+      {/* Proctoring Dashboard Modal */}
+      {showProctoringDashboard && selectedSession?.proctoring && (
+        <ProctoringDashboard
+          proctoringData={selectedSession.proctoring}
+          candidateName={selectedSession.candidateName}
+          onClose={() => {
+            setShowProctoringDashboard(false);
+            setSelectedSession(null);
+          }}
         />
       )}
 
