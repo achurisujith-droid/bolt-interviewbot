@@ -29,6 +29,58 @@ function App() {
       return;
     }
     
+    // Add some test data if none exists
+    const addTestDataIfEmpty = () => {
+      const existingSessions = localStorage.getItem('interviewSessions');
+      const existingCertificates = localStorage.getItem('certificates');
+      
+      if (!existingSessions || JSON.parse(existingSessions).length === 0) {
+        console.log('📝 Adding test session data...');
+        const testSessions = [
+          {
+            id: 'test-session-1',
+            candidateName: 'John Doe',
+            candidateEmail: 'john@example.com',
+            position: 'Software Developer',
+            status: 'evaluated',
+            createdAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            score: 85,
+            responses: [
+              {
+                questionId: 'q1',
+                question: 'Tell me about yourself',
+                transcript: 'I am a software developer with 5 years of experience...',
+                score: 85,
+                feedback: 'Great response with clear examples',
+                strengths: ['Clear communication', 'Relevant experience'],
+                improvements: ['Could provide more specific metrics']
+              }
+            ]
+          }
+        ];
+        localStorage.setItem('interviewSessions', JSON.stringify(testSessions));
+      }
+      
+      if (!existingCertificates || JSON.parse(existingCertificates).length === 0) {
+        console.log('🏆 Adding test certificate data...');
+        const testCertificates = [
+          {
+            id: 'test-cert-1',
+            candidateName: 'John Doe',
+            position: 'Software Developer',
+            score: 85,
+            issueDate: new Date().toISOString(),
+            certificateNumber: 'AI-CERT-12345678-ABCD',
+            evaluationMethod: 'GPT-4o AI Evaluation'
+          }
+        ];
+        localStorage.setItem('certificates', JSON.stringify(testCertificates));
+      }
+    };
+    
+    addTestDataIfEmpty();
+    
     // Debug: Show all localStorage keys
     console.log('🔍 All localStorage keys:', Object.keys(localStorage));
     console.log('📦 localStorage length:', localStorage.length);

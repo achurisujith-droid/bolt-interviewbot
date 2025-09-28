@@ -63,11 +63,26 @@ Verification: This is an official AI evaluation report
     
     console.log('📁 Download filename:', link.download);
     
+    // Test if we can create the link properly
+    console.log('🔗 Step 5: Testing link creation...');
+    console.log('🔗 Link href:', link.href);
+    console.log('🔗 Link download:', link.download);
+    
     // Add to DOM and trigger download
     document.body.appendChild(link);
     console.log('🔗 Link added to DOM');
+    // Add a small delay to ensure DOM is ready
+    setTimeout(() => {
+      console.log('🖱️ Step 6: Triggering click...');
+      try {
+        link.click();
+        console.log('✅ Click triggered successfully');
+      } catch (clickError) {
+        console.error('❌ Click failed:', clickError);
+        // Fallback: try programmatic download
+        console.log('🔄 Trying fallback download method...');
+    }, 100);
     
-    link.click();
     console.log('✅ Download triggered');
     
     // Cleanup
@@ -75,7 +90,7 @@ Verification: This is an official AI evaluation report
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       console.log('🧹 Cleanup completed');
-    }, 100);
+    }, 1000);
     
   } catch (error) {
     console.error('❌ Download failed:', error);
@@ -83,7 +98,28 @@ Verification: This is an official AI evaluation report
   }
 };
 
-export const generateCertificateCanvas = (certificate: Certificate, session?: any): HTMLCanvasElement => {
+    
+    // Try alternative download method
+    console.log('🔄 Trying alternative download method...');
+    try {
+      const alternativeContent = `AI Interview Certificate\n\nCandidate: ${certificate.candidateName}\nPosition: ${certificate.position}\nScore: ${certificate.score}%\nCertificate: ${certificate.certificateNumber}\nDate: ${certificate.issueDate.toLocaleDateString()}`;
+      const alternativeBlob = new Blob([alternativeContent], { type: 'text/plain' });
+      const alternativeUrl = URL.createObjectURL(alternativeBlob);
+      
+      const alternativeLink = document.createElement('a');
+      alternativeLink.href = alternativeUrl;
+      alternativeLink.download = `Certificate-${certificate.candidateName.replace(/\s+/g, '-')}.txt`;
+      
+      document.body.appendChild(alternativeLink);
+      alternativeLink.click();
+      document.body.removeChild(alternativeLink);
+      URL.revokeObjectURL(alternativeUrl);
+      
+      console.log('✅ Alternative download method succeeded');
+    } catch (altError) {
+      console.error('❌ Alternative download also failed:', altError);
+      alert(`❌ Download failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check the console (F12) for detailed error information.`);
+    }
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   
