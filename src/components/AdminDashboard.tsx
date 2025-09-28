@@ -7,6 +7,8 @@ import { DetailedEvaluationReport } from './DetailedEvaluationReport';
 import { ReEvaluationInterface } from './ReEvaluationInterface';
 import { InterviewMethodComparison } from './InterviewMethodComparison';
 import { ProctoringDashboard } from './ProctoringDashboard';
+import { TranscriptViewer } from './TranscriptViewer';
+import { ProctoringDashboard } from './ProctoringDashboard';
 import { downloadCertificate } from '../utils/certificateGenerator';
 
 interface AdminDashboardProps {
@@ -631,6 +633,7 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -673,10 +676,49 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                     <span className="text-xs text-gray-400">Not proctored</span>
                   )}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {session.proctoring?.enabled ? (
+                    <div className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-1" />
+                      <span className="text-xs text-green-600">
+                        {session.proctoring.violations.length > 0 ? 
+                          `${session.proctoring.violations.length} violations` : 
+                          'Clean'
+                        }
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not proctored</span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {session.createdAt.toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  {/* Transcripts Button */}
+                  {session.responses.some(r => r.transcript) && (
+                    <button 
+                      onClick={() => handleViewTranscripts(session)}
+                      className="text-indigo-600 hover:text-indigo-900 mr-3 flex items-center"
+                      title="View Transcripts"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="ml-1 text-xs">Transcripts</span>
+                    </button>
+                  )}
+                  
+                  {/* Proctoring Button */}
+                  {session.proctoring?.enabled && (
+                    <button 
+                      onClick={() => handleViewProctoring(session)}
+                      className="text-purple-600 hover:text-purple-900 mr-3 flex items-center"
+                      title="View Proctoring Data"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span className="ml-1 text-xs">Proctoring</span>
+                    </button>
+                  )}
+                  
                   <button 
                     onClick={() => handleViewDetails(session)}
                     className="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
@@ -884,6 +926,29 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
             setSelectedSession(null);
           }}
           onReEvaluationComplete={handleReEvaluationComplete}
+        />
+      )}
+
+      {/* Proctoring Dashboard Modal */}
+      {showProctoringDashboard && selectedSession?.proctoring && (
+        <ProctoringDashboard
+          proctoringData={selectedSession.proctoring}
+          candidateName={selectedSession.candidateName}
+          onClose={() => {
+            setShowProctoringDashboard(false);
+            setSelectedSession(null);
+          }}
+        />
+      )}
+
+      {/* Transcript Viewer Modal */}
+      {showTranscriptViewer && selectedSession && (
+        <TranscriptViewer
+          session={selectedSession}
+          onClose={() => {
+            setShowTranscriptViewer(false);
+            setSelectedSession(null);
+          }}
         />
       )}
     </div>
