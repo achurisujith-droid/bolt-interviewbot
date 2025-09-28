@@ -213,25 +213,38 @@ export const generateCertificateCanvas = (certificate: Certificate, session?: an
 
 export const downloadCertificate = (certificate: Certificate, session?: any): void => {
   try {
+    console.log('🎯 Starting certificate download...');
+    console.log('📜 Certificate data:', certificate);
+    console.log('📊 Session data:', session);
+    
     const canvas = generateCertificateCanvas(certificate, session);
+    console.log('🎨 Canvas generated successfully');
     
     // Convert canvas to blob for better browser compatibility
     canvas.toBlob((blob) => {
       if (blob) {
+        console.log('📦 Blob created successfully, size:', blob.size);
         const url = URL.createObjectURL(blob);
+        console.log('🔗 Object URL created:', url);
         const link = document.createElement('a');
         link.href = url;
         link.download = `AI-Interview-Evaluation-Report-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.certificateNumber}.png`;
+        console.log('📁 Download filename:', link.download);
         document.body.appendChild(link);
+        console.log('🔗 Link added to DOM, triggering click...');
         link.click();
+        console.log('✅ Click triggered');
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        console.log('🧹 Cleanup completed');
       } else {
+        console.error('❌ Failed to create blob from canvas');
         throw new Error('Failed to generate evaluation report');
       }
     }, 'image/png', 1.0);
   } catch (error) {
     console.error('Evaluation report generation failed:', error);
+    console.error('❌ Full error details:', error);
     throw error;
   }
 };

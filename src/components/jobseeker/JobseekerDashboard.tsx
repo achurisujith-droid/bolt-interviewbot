@@ -727,9 +727,8 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
                               );
                             console.log('📊 Related session:', relatedSession);
                             console.log('📥 About to call downloadCertificate...');
-                           await downloadCertificate(certificate, relatedSession);
+                            downloadCertificate(certificate, relatedSession);
                             console.log('✅ downloadCertificate completed');
-                            console.log('✅ Certificate downloaded successfully!');
                           } catch (error) {
                             console.error('Certificate download failed:', error);
                             alert(`❌ Certificate download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

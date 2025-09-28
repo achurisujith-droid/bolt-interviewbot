@@ -652,14 +652,22 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                   <button 
                     onClick={() => {
                       try {
+                        console.log('🎯 Admin: Starting certificate download...');
                         const relatedCertificate = certificates.find(c => 
                           c.candidateName === session.candidateName && 
                           c.position === session.position
                         );
+                        console.log('🔍 Found certificate:', relatedCertificate);
                         if (relatedCertificate) {
-                          downloadCertificate(relatedCertificate, session);
-                          alert('✅ Detailed evaluation report downloaded successfully!');
+                          const relatedSession = sessions.find(s => 
+                            s.candidateName === session.candidateName && 
+                            s.position === session.position
+                          );
+                          console.log('📊 Related session:', relatedSession);
+                          downloadCertificate(relatedCertificate, relatedSession);
+                          console.log('✅ Download function called successfully');
                         } else {
+                          console.error('❌ No certificate found for session');
                           alert('❌ No certificate found for this session. Complete the evaluation first.');
                         }
                       } catch (error) {
@@ -735,12 +743,15 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                   <button 
                     onClick={() => {
                       try {
+                        console.log('🎯 Admin Certificates: Starting download...');
+                        console.log('📜 Certificate:', cert);
                         const relatedSession = sessions.find(s => 
                           s.candidateName === cert.candidateName && 
                           s.position === cert.position
                         );
+                        console.log('📊 Related session:', relatedSession);
                         downloadCertificate(cert, relatedSession);
-                        alert('Detailed Evaluation Report downloaded successfully!');
+                        console.log('✅ Download completed');
                       } catch (error) {
                         console.error('Evaluation report download failed:', error);
                         alert('Failed to download evaluation report. Please try again.');
