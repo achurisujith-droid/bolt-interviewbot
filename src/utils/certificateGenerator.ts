@@ -81,6 +81,7 @@ Verification: This is an official AI evaluation report
         console.error('❌ Click failed:', clickError);
         // Fallback: try programmatic download
         console.log('🔄 Trying fallback download method...');
+      }
     }, 100);
     
     console.log('✅ Download triggered');
@@ -95,9 +96,6 @@ Verification: This is an official AI evaluation report
   } catch (error) {
     console.error('❌ Download failed:', error);
     alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-};
-
     
     // Try alternative download method
     console.log('🔄 Trying alternative download method...');
@@ -120,6 +118,8 @@ Verification: This is an official AI evaluation report
       console.error('❌ Alternative download also failed:', altError);
       alert(`❌ Download failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check the console (F12) for detailed error information.`);
     }
+  }
+  
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   
