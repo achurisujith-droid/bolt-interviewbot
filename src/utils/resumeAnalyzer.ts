@@ -140,7 +140,8 @@ export const generateResumeBasedQuestions = async (
   position: string
 ): Promise<any[]> => {
   if (!AI_CONFIG.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is required for question generation. Please add VITE_OPENAI_API_KEY to your .env file.');
+    console.warn('⚠️ OpenAI API key not configured - falling back to standard questions');
+    return []; // Return empty array to trigger fallback to standard questions
   }
 
   const questionPrompt = `

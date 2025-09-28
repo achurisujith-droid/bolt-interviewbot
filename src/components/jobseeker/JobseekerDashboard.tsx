@@ -131,13 +131,22 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   const handleResumeUploaded = async (resumeText: string) => {
     setIsAnalyzingResume(true);
     try {
-      const analysis = await analyzeResume(resumeText, selectedProduct?.name || 'General Position');
-      setResumeAnalysis(analysis);
-      setShowResumeUpload(false);
-      
-      // Now start the interview with resume analysis
-      if (selectedProduct) {
-        handleStartInterview(selectedProduct);
+      if (!import.meta.env.VITE_OPENAI_API_KEY) {
+        console.log('⚠️ No OpenAI API key - skipping resume analysis');
+        alert('⚠️ OpenAI API key not configured.\n\nResume analysis requires an API key. You\'ll get standard interview questions instead.\n\nTo enable personalized questions, add VITE_OPENAI_API_KEY to your .env file.');
+        setShowResumeUpload(false);
+        if (selectedProduct) {
+          handleStartInterview(selectedProduct);
+        }
+      } else {
+        const analysis = await analyzeResume(resumeText, selectedProduct?.name || 'General Position');
+        setResumeAnalysis(analysis);
+        setShowResumeUpload(false);
+        
+        // Now start the interview with resume analysis
+        if (selectedProduct) {
+          handleStartInterview(selectedProduct);
+        }
       }
     } catch (error) {
       console.error('Resume analysis failed:', error);

@@ -198,13 +198,13 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeUploaded, on
           <p>
             🔒 Your resume is processed securely and not stored permanently.
             <br />
-            <strong>Requires OpenAI API key for real AI processing.</strong>
+            <strong>Note:</strong> Resume analysis and personalized questions require OpenAI API key.
             <br />
-            Add VITE_OPENAI_API_KEY to your .env file for full functionality.
+            Without API key, you'll get standard interview questions.
           </p>
           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-blue-800 text-xs">
-              📄 <strong>PDF Support:</strong> Upload PDF files directly or use "Paste Text" for manual entry.
+              💡 <strong>Tip:</strong> Add VITE_OPENAI_API_KEY to .env file for personalized questions and real AI evaluation.
             </p>
           </div>
         </div>

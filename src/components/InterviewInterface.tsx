@@ -55,21 +55,30 @@ export const InterviewInterface: React.FC<InterviewInterfaceProps> = ({
       let generatedQuestions: Question[] = [];
       
       if (resumeAnalysis) {
-        console.log('📄 Generating resume-based questions for:', resumeAnalysis.actualRole || position);
-        const resumeQuestions = await generateResumeBasedQuestions(resumeAnalysis, position);
-        if (resumeQuestions && resumeQuestions.length > 0) {
-          generatedQuestions = resumeQuestions;
-          console.log('✅ Generated', generatedQuestions.length, 'personalized questions');
+        console.log('📄 Attempting to generate resume-based questions for:', resumeAnalysis.actualRole || position);
+        try {
+          const resumeQuestions = await generateResumeBasedQuestions(resumeAnalysis, position);
+          if (resumeQuestions && resumeQuestions.length > 0) {
+            generatedQuestions = resumeQuestions;
+            console.log('✅ Generated', generatedQuestions.length, 'personalized questions');
+          } else {
+            console.log('⚠️ No personalized questions generated, using standard questions');
+          }
+        } catch (error) {
+          console.error('❌ Failed to generate personalized questions:', error);
+          console.log('🔄 Falling back to standard questions');
         }
       }
       
       if (generatedQuestions.length === 0) {
+        console.log('📝 Using standard questions for position:', position);
         generatedQuestions = generateQuestionsForPosition(position);
       }
       
       setQuestions(generatedQuestions);
     } catch (error) {
       console.error('Failed to load questions:', error);
+      console.log('🔄 Emergency fallback to standard questions');
       setQuestions(generateQuestionsForPosition(position));
     } finally {
       setIsLoadingQuestions(false);
