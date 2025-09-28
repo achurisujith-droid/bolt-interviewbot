@@ -14,33 +14,70 @@ export const downloadCertificate = (certificate: Certificate, session?: Intervie
   console.log('📊 Session data:', session);
   
   try {
-    // Create the certificate content
+    // Generate certificate HTML content
     const certificateContent = generateCertificateHTML(certificate, session);
     
-    // Create blob and download
-    const blob = new Blob([certificateContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    
-    // Create download link
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Certificate-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.position.replace(/\s+/g, '-')}.html`;
-    
-    // Add to DOM and click
-    document.body.appendChild(link);
-    link.click();
-    
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 100);
-    
-    console.log('✅ Certificate download completed successfully');
+    // Method 1: Try direct download
+    try {
+      const blob = new Blob([certificateContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `AI-Interview-Certificate-${certificate.candidateName.replace(/\s+/g, '-')}-${certificate.score}percent.html`;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup after a short delay
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+      }, 1000);
+      
+      console.log('✅ Certificate download initiated successfully');
+      return;
+      
+    } catch (downloadError) {
+      console.error('❌ Direct download failed:', downloadError);
+      
+      // Method 2: Open in new window as fallback
+      try {
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(certificateContent);
+          newWindow.document.close();
+          console.log('✅ Certificate opened in new window');
+          return;
+        } else {
+          throw new Error('Popup blocked');
+        }
+      } catch (popupError) {
+        console.error('❌ Popup method failed:', popupError);
+        
+        // Method 3: Copy to clipboard and show instructions
+        try {
+          navigator.clipboard.writeText(certificateContent).then(() => {
+            alert(`📋 Certificate HTML copied to clipboard!\n\nTo save your certificate:\n1. Open a text editor\n2. Paste the content (Ctrl+V)\n3. Save as "certificate.html"\n4. Open the file in your browser\n5. Print or save as PDF`);
+            console.log('✅ Certificate copied to clipboard');
+          }).catch(() => {
+            // Final fallback: Show content in alert
+            console.log('❌ Clipboard failed, showing download instructions');
+            alert(`Certificate generation completed!\n\nTo download:\n1. Right-click this page\n2. Select "Save As"\n3. Choose HTML format\n\nCertificate Number: ${certificate.certificateNumber}\nScore: ${certificate.score}%`);
+          });
+        } catch (clipboardError) {
+          console.error('❌ All methods failed:', clipboardError);
+          alert(`Certificate ready but download failed.\n\nCertificate Details:\nCandidate: ${certificate.candidateName}\nPosition: ${certificate.position}\nScore: ${certificate.score}%\nCertificate #: ${certificate.certificateNumber}\n\nPlease contact support for assistance.`);
+        }
+      }
+    }
     
   } catch (error) {
     console.error('❌ Certificate download failed:', error);
-    alert(`Certificate download failed: ${error}`);
+    alert(`❌ Certificate generation failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support.`);
   }
 };
 
