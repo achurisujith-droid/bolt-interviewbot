@@ -136,7 +136,7 @@ Be fair but thorough. Consider the position requirements and provide actionable 
       
       // Use robust JSON extraction
       content = extractJSONFromResponse(content);
-     }
+    } catch (error) {
       
       let evaluation;
       try {
@@ -350,6 +350,18 @@ const generateBlobHash = async (blob: Blob): Promise<string> => {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
 };
+
+// Helper function to extract JSON from response
+const extractJSONFromResponse = (content: string): string => {
+  // Strip markdown code blocks if present
+  if (content.startsWith('```json')) {
+    content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+  } else if (content.startsWith('```')) {
+    content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  }
+  return content;
+};
+
 // Fallback browser text-to-speech
 const speakWithBrowserTTS = (text: string): Promise<void> => {
   return new Promise((resolve, reject) => {
