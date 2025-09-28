@@ -44,6 +44,38 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     { type: 'scheduled', title: 'Data Scientist Assessment', date: 'Tomorrow 2:00 PM' },
     { type: 'certificate', title: 'Frontend Developer Certificate', date: '1 week ago' }
   ]);
+  const [userCertificates, setUserCertificates] = useState<any[]>([]);
+
+  // Load user certificates from localStorage
+  useEffect(() => {
+    const loadCertificates = () => {
+      try {
+        const allCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+        // Filter certificates for current user
+        const userCerts = allCertificates.filter((cert: any) => 
+          cert.candidateName === user.name || 
+          cert.candidateEmail === user.email
+        );
+        setUserCertificates(userCerts);
+        console.log('📜 Loaded certificates for user:', userCerts.length);
+      } catch (error) {
+        console.error('Failed to load certificates:', error);
+        setUserCertificates([]);
+      }
+    };
+
+    loadCertificates();
+    
+    // Listen for storage changes (when new certificates are added)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'certificates') {
+        loadCertificates();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [user.name, user.email]);
 
   // Load user purchases from localStorage
   useEffect(() => {
@@ -247,6 +279,21 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
       completedInterviews: prev.completedInterviews + 1,
       certificatesEarned: prev.certificatesEarned + 1
     }));
+    
+    // Reload certificates to show the new one
+    const loadCertificates = () => {
+      try {
+        const allCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+        const userCerts = allCertificates.filter((cert: any) => 
+          cert.candidateName === user.name || 
+          cert.candidateEmail === user.email
+        );
+        setUserCertificates(userCerts);
+      } catch (error) {
+        console.error('Failed to reload certificates:', error);
+      }
+    };
+    loadCertificates();
     
     // Reset state
     setShowEvaluation(false);
@@ -605,10 +652,91 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
           </div>
         )}
         {activeTab === 'certificates' && (
-          <div className="text-center py-12">
-            <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-800 mb-2">Your Certificates</h3>
-            <p className="text-gray-600">Earned certificates will be displayed here</p>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-800">Your Certificates</h2>
+              <div className="text-sm text-gray-500">
+                {userCertificates.length} certificate{userCertificates.length !== 1 ? 's' : ''} earned
+              </div>
+            </div>
+            
+            {userCertificates.length === 0 ? (
+              <div className="text-center py-12">
+                <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-800 mb-2">No Certificates Yet</h3>
+                <p className="text-gray-600 mb-4">Complete an interview to earn your first certificate</p>
+                <button
+                  onClick={() => setActiveTab('products')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  Start Your First Interview
+                </button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {userCertificates.map((certificate) => (
+                  <div key={certificate.id} className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <Award className="w-8 h-8" />
+                        <span className="text-sm font-medium">Certificate</span>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6">
+                      <h3 className="text-lg font-bold text-gray-800 mb-2">{certificate.position}</h3>
+                      <div className="space-y-2 text-sm text-gray-600 mb-4">
+                        <div className="flex justify-between">
+                          <span>Score:</span>
+                          <span className={`font-bold ${
+                            certificate.score >= 80 ? 'text-green-600' :
+                            certificate.score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {certificate.score}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Issue Date:</span>
+                          <span>{new Date(certificate.issueDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Certificate ID:</span>
+                          <span className="font-mono text-xs">{certificate.certificateNumber}</span>
+                        </div>
+                        {certificate.evaluationMethod && (
+                          <div className="flex justify-between">
+                            <span>Method:</span>
+                            <span className="text-xs">{certificate.evaluationMethod}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { downloadCertificate } = await import('../../utils/certificateGenerator');
+                            const relatedSession = JSON.parse(localStorage.getItem('interviewSessions') || '[]')
+                              .find((s: any) => 
+                                s.candidateName === certificate.candidateName && 
+                                s.position === certificate.position
+                              );
+                            downloadCertificate(certificate, relatedSession);
+                            alert('✅ Certificate downloaded successfully!');
+                          } catch (error) {
+                            console.error('Certificate download failed:', error);
+                            alert('❌ Failed to download certificate. Please try again.');
+                          }
+                        }}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 flex items-center justify-center"
+                      >
+                        <Award className="w-4 h-4 mr-2" />
+                        Download Certificate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {activeTab === 'profile' && (
