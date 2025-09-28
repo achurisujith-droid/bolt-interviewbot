@@ -722,7 +722,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
                                 s.candidateName === certificate.candidateName && 
                                 s.position === certificate.position
                               );
-                            downloadCertificate(certificate, relatedSession);
+                           await downloadCertificate(certificate, relatedSession);
                             console.log('✅ Certificate downloaded successfully!');
                           } catch (error) {
                             console.error('Certificate download failed:', error);
