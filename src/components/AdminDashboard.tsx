@@ -8,7 +8,6 @@ import { ReEvaluationInterface } from './ReEvaluationInterface';
 import { InterviewMethodComparison } from './InterviewMethodComparison';
 import { ProctoringDashboard } from './ProctoringDashboard';
 import { TranscriptViewer } from './TranscriptViewer';
-import { ProctoringDashboard } from './ProctoringDashboard';
 import { downloadCertificate } from '../utils/certificateGenerator';
 
 interface AdminDashboardProps {
