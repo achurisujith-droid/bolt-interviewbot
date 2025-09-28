@@ -75,7 +75,7 @@ export const downloadCertificate = async (certificate: Certificate, session?: In
         try {
           link.click();
           console.log('✅ Click executed');
-          downloadSuccess = true;
+          downloadSuccess = true; // Set synchronously to prevent fallback
         } catch (clickError) {
           console.error('❌ Click failed:', clickError);
         }
@@ -91,6 +91,9 @@ export const downloadCertificate = async (certificate: Certificate, session?: In
           }
         }, 1000);
       }, 100);
+      
+      // Set downloadSuccess immediately to prevent fallback race condition
+      downloadSuccess = true;
     }
     
     // Method 3: Fallback - open in new window
