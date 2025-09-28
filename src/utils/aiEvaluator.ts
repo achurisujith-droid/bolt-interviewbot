@@ -131,43 +131,41 @@ Be fair but thorough. Consider the position requirements and provide actionable 
 
     const result = await response.json();
     
+    let content = result.choices[0].message.content;
+    
+    // Use robust JSON extraction
+    content = extractJSONFromResponse(content);
+    
+    let evaluation;
     try {
-      let content = result.choices[0].message.content;
-      
-      // Use robust JSON extraction
-      content = extractJSONFromResponse(content);
-    } catch (error) {
-      
-      let evaluation;
-      try {
-        evaluation = JSON.parse(content);
-      } catch (parseError) {
-        // Fallback: Extract JSON object between first { and last }
-        const firstBrace = content.indexOf('{');
-        const lastBrace = content.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          const jsonSubstring = content.substring(firstBrace, lastBrace + 1);
-          evaluation = JSON.parse(jsonSubstring);
-        } else {
-          throw new Error('No valid JSON object found in response');
-        }
-      }
-      
-      const result = {
-        score: Math.max(0, Math.min(100, evaluation.score)),
-        feedback: evaluation.feedback,
-        strengths: evaluation.strengths || [],
-        improvements: evaluation.improvements || []
-      };
-      
-      // Cache the result
-      smartCache.set(cacheKey, result, azureConfig.cache.ttl.evaluations);
-      
-      return result;
+      evaluation = JSON.parse(content);
     } catch (parseError) {
+      // Fallback: Extract JSON object between first { and last }
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonSubstring = content.substring(firstBrace, lastBrace + 1);
+        evaluation = JSON.parse(jsonSubstring);
+      } else {
+        throw new Error('No valid JSON object found in response');
+      }
+    }
+    
+    const finalEvaluation = {
+      score: Math.max(0, Math.min(100, evaluation.score)),
+      feedback: evaluation.feedback,
+      strengths: evaluation.strengths || [],
+      improvements: evaluation.improvements || []
+    };
+    
+    // Cache the result
+    smartCache.set(cacheKey, finalEvaluation, azureConfig.cache.ttl.evaluations);
+    
+    return finalEvaluation;
+  } catch (parseError) {
       console.error('Failed to parse GPT-4o response:', result.choices[0].message.content);
       throw new Error('Invalid response format from GPT-4o');
-    }
+  }
   });
 };
 
