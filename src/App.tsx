@@ -2,21 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { InterviewInterface } from './components/InterviewInterface';
 import { EvaluationInterface } from './components/EvaluationInterface';
 import { AdminDashboard } from './components/AdminDashboard';
-import { JobseekerDashboard } from './components/jobseeker/JobseekerDashboard';
-import { RecruiterPortal } from './components/recruiter/RecruiterPortal';
-import { LoginInterface } from './components/auth/LoginInterface';
+import { ResumeUpload } from './components/ResumeUpload';
 import { InterviewSession, Certificate, InterviewResponse, ResumeAnalysis } from './types/interview';
-import { Recruiter } from './types/products';
-
-type AppState = 'login' | 'admin' | 'jobseeker' | 'recruiter';
+import { analyzeResume } from './utils/resumeAnalyzer';
 
 function App() {
-  const [appState, setAppState] = useState<AppState>('login');
+  const [currentView, setCurrentView] = useState<'admin' | 'resume-upload' | 'interview' | 'evaluation'>('admin');
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
+  const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [userType, setUserType] = useState<'admin' | 'jobseeker' | 'recruiter' | null>(null);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -29,88 +25,11 @@ function App() {
       return;
     }
     
-    // Add some test data if none exists
-    const addTestDataIfEmpty = () => {
-      const existingSessions = localStorage.getItem('interviewSessions');
-      const existingCertificates = localStorage.getItem('certificates');
-      
-      if (!existingSessions || JSON.parse(existingSessions).length === 0) {
-        console.log('📝 Adding test session data...');
-        const testSessions = [
-          {
-            id: 'test-session-1',
-            candidateName: 'John Doe',
-            candidateEmail: 'john@example.com',
-            position: 'Software Developer',
-            status: 'evaluated',
-            createdAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
-            score: 85,
-            responses: [
-              {
-                questionId: 'q1',
-                question: 'Tell me about yourself',
-                transcript: 'I am a software developer with 5 years of experience...',
-                score: 85,
-                feedback: 'Great response with clear examples',
-                strengths: ['Clear communication', 'Relevant experience'],
-                improvements: ['Could provide more specific metrics']
-              }
-            ]
-          }
-        ];
-        localStorage.setItem('interviewSessions', JSON.stringify(testSessions));
-      }
-      
-      if (!existingCertificates || JSON.parse(existingCertificates).length === 0) {
-        console.log('🏆 Adding test certificate data...');
-        const testCertificates = [
-          {
-            id: 'test-cert-1',
-            candidateName: 'John Doe',
-            position: 'Software Developer',
-            score: 85,
-            issueDate: new Date().toISOString(),
-            certificateNumber: 'AI-CERT-12345678-ABCD',
-            evaluationMethod: 'GPT-4o AI Evaluation'
-          }
-        ];
-        localStorage.setItem('certificates', JSON.stringify(testCertificates));
-      }
-    };
-    
-    addTestDataIfEmpty();
-    
-    // Debug: Show all localStorage keys
-    console.log('🔍 All localStorage keys:', Object.keys(localStorage));
-    console.log('📦 localStorage length:', localStorage.length);
-    
     const savedSessions = localStorage.getItem('interviewSessions');
     const savedCertificates = localStorage.getItem('certificates');
     
     console.log('📊 Saved sessions:', savedSessions);
     console.log('🎓 Saved certificates:', savedCertificates);
-    
-    // Try to recover from any backup keys
-    if (!savedSessions) {
-      const backupSessions = localStorage.getItem('backup_interviewSessions') || 
-                            localStorage.getItem('sessions') ||
-                            localStorage.getItem('interview_sessions');
-      if (backupSessions) {
-        console.log('🔄 Found backup sessions, restoring...');
-        localStorage.setItem('interviewSessions', backupSessions);
-      }
-    }
-    
-    if (!savedCertificates) {
-      const backupCertificates = localStorage.getItem('backup_certificates') || 
-                                localStorage.getItem('certs') ||
-                                localStorage.getItem('interview_certificates');
-      if (backupCertificates) {
-        console.log('🔄 Found backup certificates, restoring...');
-        localStorage.setItem('certificates', backupCertificates);
-      }
-    }
     
     if (savedSessions) {
       try {
@@ -123,11 +42,8 @@ function App() {
         console.log('✅ Loaded sessions:', parsedSessions.length);
       } catch (error) {
         console.error('❌ Failed to parse sessions:', error);
-        console.log('🔧 Attempting to recover sessions data...');
         localStorage.removeItem('interviewSessions');
       }
-    } else {
-      console.log('ℹ️ No saved sessions found');
     }
     
     if (savedCertificates) {
@@ -140,11 +56,8 @@ function App() {
         console.log('✅ Loaded certificates:', parsedCertificates.length);
       } catch (error) {
         console.error('❌ Failed to parse certificates:', error);
-        console.log('🔧 Attempting to recover certificates data...');
         localStorage.removeItem('certificates');
       }
-    } else {
-      console.log('ℹ️ No saved certificates found');
     }
 
     // Check if we're joining an interview via URL parameters
@@ -155,16 +68,26 @@ function App() {
     const position = urlParams.get('position');
 
     if (sessionId && candidateName && candidateEmail && position) {
+      console.log('🔗 Interview link detected:', { sessionId, candidateName, candidateEmail, position });
+      
       // Check if session already exists
       const existingSession = sessions.find(s => s.id === sessionId);
       if (existingSession && existingSession.status !== 'pending') {
-        // Session already completed, redirect to admin
-        console.log('🔄 Session already exists and completed, redirecting to admin');
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setAppState('login');
+        console.log('🔄 Session already exists and completed, showing admin');
+        setCurrentView('admin');
       } else {
-        // For URL-based interviews, redirect to login and let them choose user type
-        setAppState('login');
+        // Create new session and start with resume upload
+        const newSession: InterviewSession = {
+          id: sessionId,
+          candidateName,
+          candidateEmail,
+          position,
+          status: 'pending',
+          createdAt: new Date(),
+          responses: []
+        };
+        setCurrentSession(newSession);
+        setCurrentView('resume-upload');
       }
     }
     
@@ -173,92 +96,24 @@ function App() {
 
   // Save data to localStorage whenever sessions or certificates change
   useEffect(() => {
-    if (!dataLoaded) return; // Don't save during initial load
+    if (!dataLoaded) return;
     
     try {
       console.log('💾 Saving sessions to localStorage:', sessions.length);
       localStorage.setItem('interviewSessions', JSON.stringify(sessions));
-      
-      // Clean up old backups and create new one
-      const backupKey = `backup_sessions_${Date.now()}`;
-      localStorage.setItem(backupKey, JSON.stringify(sessions));
-      
-      // Keep only the 5 most recent backups
-      const allKeys = Object.keys(localStorage);
-      const sessionBackupKeys = allKeys
-        .filter(key => key.startsWith('backup_sessions_'))
-        .sort((a, b) => {
-          const timestampA = parseInt(a.split('_')[2]);
-          const timestampB = parseInt(b.split('_')[2]);
-          return timestampB - timestampA; // Sort descending (newest first)
-        });
-      
-      // Remove old backups, keep only 5 most recent
-      sessionBackupKeys.slice(5).forEach(key => {
-        localStorage.removeItem(key);
-      });
-      
-      console.log('✅ Sessions saved successfully');
     } catch (error) {
       console.error('❌ Failed to save sessions:', error);
-      // Try to free up space by removing old backups
-      const allKeys = Object.keys(localStorage);
-      const oldBackups = allKeys.filter(key => key.startsWith('backup_sessions_') || key.startsWith('backup_certificates_'));
-      oldBackups.forEach(key => localStorage.removeItem(key));
-      
-      // Try saving again without backup
-      try {
-        localStorage.setItem('interviewSessions', JSON.stringify(sessions));
-        console.log('✅ Sessions saved successfully after cleanup');
-      } catch (retryError) {
-        console.error('❌ Failed to save sessions even after cleanup:', retryError);
-        alert('Warning: Failed to save interview data. Storage is full. Your data may be lost on refresh.');
-      }
     }
-  }, [sessions]);
+  }, [sessions, dataLoaded]);
 
   useEffect(() => {
-    if (!dataLoaded) return; // Don't save during initial load
+    if (!dataLoaded) return;
     
     try {
       console.log('💾 Saving certificates to localStorage:', certificates.length);
       localStorage.setItem('certificates', JSON.stringify(certificates));
-      
-      // Clean up old backups and create new one
-      const backupKey = `backup_certificates_${Date.now()}`;
-      localStorage.setItem(backupKey, JSON.stringify(certificates));
-      
-      // Keep only the 5 most recent backups
-      const allKeys = Object.keys(localStorage);
-      const certificateBackupKeys = allKeys
-        .filter(key => key.startsWith('backup_certificates_'))
-        .sort((a, b) => {
-          const timestampA = parseInt(a.split('_')[2]);
-          const timestampB = parseInt(b.split('_')[2]);
-          return timestampB - timestampA; // Sort descending (newest first)
-        });
-      
-      // Remove old backups, keep only 5 most recent
-      certificateBackupKeys.slice(5).forEach(key => {
-        localStorage.removeItem(key);
-      });
-      
-      console.log('✅ Certificates saved successfully');
     } catch (error) {
       console.error('❌ Failed to save certificates:', error);
-      // Try to free up space by removing old backups
-      const allKeys = Object.keys(localStorage);
-      const oldBackups = allKeys.filter(key => key.startsWith('backup_sessions_') || key.startsWith('backup_certificates_'));
-      oldBackups.forEach(key => localStorage.removeItem(key));
-      
-      // Try saving again without backup
-      try {
-        localStorage.setItem('certificates', JSON.stringify(certificates));
-        console.log('✅ Certificates saved successfully after cleanup');
-      } catch (retryError) {
-        console.error('❌ Failed to save certificates even after cleanup:', retryError);
-        alert('Warning: Failed to save certificate data. Storage is full. Your data may be lost on refresh.');
-      }
     }
   }, [certificates, dataLoaded]);
 
@@ -277,60 +132,141 @@ function App() {
     return `${baseUrl}?${params.toString()}`;
   };
 
-  const handleLogin = (user: any, type: 'admin' | 'jobseeker' | 'recruiter') => {
-    setCurrentUser(user);
-    setUserType(type);
-    setAppState(type);
+  const handleResumeUploaded = async (resumeText: string) => {
+    if (!currentSession) return;
+    
+    try {
+      console.log('📄 Analyzing resume...');
+      const analysis = await analyzeResume(resumeText, currentSession.position);
+      setResumeAnalysis(analysis);
+      
+      const updatedSession = {
+        ...currentSession,
+        resumeText,
+        resumeAnalysis: analysis,
+        status: 'in-progress' as const
+      };
+      setCurrentSession(updatedSession);
+      setCurrentView('interview');
+    } catch (error) {
+      console.error('Resume analysis failed:', error);
+      // Continue without resume analysis
+      const updatedSession = {
+        ...currentSession,
+        resumeText,
+        status: 'in-progress' as const
+      };
+      setCurrentSession(updatedSession);
+      setCurrentView('interview');
+    }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setUserType(null);
-    setAppState('login');
+  const handleSkipResume = () => {
+    if (!currentSession) return;
+    
+    const updatedSession = {
+      ...currentSession,
+      status: 'in-progress' as const
+    };
+    setCurrentSession(updatedSession);
+    setCurrentView('interview');
   };
 
-  if (appState === 'login') {
-    return <LoginInterface onLogin={handleLogin} />;
-  }
-
-  if (appState === 'jobseeker' && currentUser) {
-    return (
-      <JobseekerDashboard user={currentUser} onLogout={handleLogout} />
-    );
-  }
-
-  if (appState === 'recruiter' && currentUser) {
-    const recruiterData: Recruiter = {
-      id: currentUser.id,
-      name: currentUser.name,
-      email: currentUser.email,
-      company: currentUser.company || 'Demo Company',
-      referralCode: currentUser.referralCode || 'DEMO2024',
-      totalEarnings: 1250.00,
-      pendingEarnings: 320.00,
-      totalReferrals: 24,
-      commissionRate: currentUser.commissionRate || 20,
-      isActive: true,
-      joinedAt: new Date()
+  const handleInterviewComplete = (responses: InterviewResponse[]) => {
+    if (!currentSession) return;
+    
+    console.log('✅ Interview completed with', responses.length, 'responses');
+    
+    const completedSession: InterviewSession = {
+      ...currentSession,
+      responses,
+      status: 'completed',
+      completedAt: new Date()
     };
     
+    setCurrentSession(completedSession);
+    setSessions(prev => {
+      const filtered = prev.filter(s => s.id !== completedSession.id);
+      return [...filtered, completedSession];
+    });
+    
+    setCurrentView('evaluation');
+  };
+
+  const handleEvaluationComplete = (updatedSession: InterviewSession, certificate: Certificate) => {
+    console.log('✅ Evaluation completed:', updatedSession.score, '%');
+    
+    // Update sessions
+    setSessions(prev => {
+      const filtered = prev.filter(s => s.id !== updatedSession.id);
+      return [...filtered, updatedSession];
+    });
+    
+    // Add certificate
+    setCertificates(prev => [...prev, certificate]);
+    
+    // Clear URL parameters and return to admin
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setCurrentSession(null);
+    setResumeAnalysis(null);
+    setCurrentView('admin');
+  };
+
+  // Show loading state while data loads
+  if (!dataLoaded) {
     return (
-      <RecruiterPortal recruiter={recruiterData} onLogout={handleLogout} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-800">Loading AI Interview System...</h2>
+        </div>
+      </div>
     );
   }
 
-  if (appState === 'admin') {
-    return (
-      <AdminDashboard
-        sessions={sessions}
-        certificates={certificates}
-        onGenerateLink={generateInterviewLink}
-        onLogout={handleLogout}
-      />
-    );
+  // Render based on current view
+  switch (currentView) {
+    case 'resume-upload':
+      return (
+        <ResumeUpload
+          onResumeUploaded={handleResumeUploaded}
+          onSkip={handleSkipResume}
+        />
+      );
+      
+    case 'interview':
+      return currentSession ? (
+        <InterviewInterface
+          sessionId={currentSession.id}
+          candidateName={currentSession.candidateName}
+          position={currentSession.position}
+          resumeAnalysis={resumeAnalysis || undefined}
+          onComplete={handleInterviewComplete}
+        />
+      ) : null;
+      
+    case 'evaluation':
+      return currentSession ? (
+        <EvaluationInterface
+          session={currentSession}
+          onEvaluationComplete={handleEvaluationComplete}
+        />
+      ) : null;
+      
+    case 'admin':
+    default:
+      return (
+        <AdminDashboard
+          sessions={sessions}
+          certificates={certificates}
+          onGenerateLink={generateInterviewLink}
+          onLogout={() => {
+            // Simple logout - just refresh the page
+            window.location.reload();
+          }}
+        />
+      );
   }
-
-  return <div>Loading...</div>;
 }
 
 export default App;

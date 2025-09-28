@@ -15,7 +15,7 @@ import { InterviewSession, InterviewResponse, ResumeAnalysis } from '../../types
 interface JobseekerDashboardProps {
   user: any;
   sessions: InterviewSession[];
-  certificates: Certificate[];
+  certificates: any[];
   onLogout: () => void;
   onStartInterview: (position: string) => void;
 }
