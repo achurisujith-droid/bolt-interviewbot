@@ -393,6 +393,10 @@ const speakWithBrowserTTS = (text: string): Promise<void> => {
 // Main evaluation function using real AI
 export const evaluateResponse = async (response: InterviewResponse, position: string = 'Software Developer', resumeContext?: string, resumeAnalysis?: any): Promise<{ score: number; feedback: string; strengths?: string[]; improvements?: string[] }> => {
   try {
+    console.log('🎯 Starting REAL AI evaluation for:', position);
+    console.log('🔑 API Key available:', !!AI_CONFIG.OPENAI_API_KEY);
+    console.log('🎤 Audio blob available:', !!response.audioBlob);
+    
     if (!AI_CONFIG.OPENAI_API_KEY) {
       console.warn('⚠️ No OpenAI API key found - using mock evaluation');
       throw new Error('OpenAI API key is required for AI evaluation. Please add VITE_OPENAI_API_KEY to your .env file.');
@@ -429,7 +433,8 @@ export const evaluateResponse = async (response: InterviewResponse, position: st
 
 // Enhanced mock evaluator for fallback
 const mockEvaluateResponse = async (response: InterviewResponse): Promise<{ score: number; feedback: string; strengths: string[]; improvements: string[] }> => {
-  console.log('⚠️ Using mock evaluation - OpenAI API not available or failed');
+  console.log('⚠️ MOCK EVALUATION MODE - OpenAI API not available or failed');
+  console.log('🔧 This is fallback mode - scores are simulated, not real AI analysis');
   
   // Simulate AI processing delay
   await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
@@ -451,38 +456,25 @@ const mockEvaluateResponse = async (response: InterviewResponse): Promise<{ scor
     }
   }
   
-  // Mock scoring algorithm based on duration and randomness
-  let baseScore = Math.min(85, Math.max(45, duration * 1.5)); // More realistic scoring
-  const variance = (Math.random() - 0.5) * 15;
-  const finalScore = Math.max(30, Math.min(95, Math.round(baseScore + variance)));
+  // VERY LOW mock scores to indicate this is not real evaluation
+  let baseScore = Math.min(40, Math.max(10, duration * 0.8)); // Much lower scores
+  const variance = (Math.random() - 0.5) * 10;
+  const finalScore = Math.max(5, Math.min(45, Math.round(baseScore + variance)));
   
-  console.log(`📊 Mock evaluation: duration=${duration}s, baseScore=${baseScore}, finalScore=${finalScore}`);
+  console.log(`📊 MOCK EVALUATION (NOT REAL): duration=${duration}s, baseScore=${baseScore}, finalScore=${finalScore}`);
   
   // Generate realistic feedback based on score
   let feedback = '';
   let strengths: string[] = [];
   let improvements: string[] = [];
   
-  if (finalScore >= 80) {
-    feedback = 'Excellent response demonstrating strong communication skills and relevant experience. The answer was well-structured and provided good insights.';
-    strengths = ['Clear communication', 'Relevant examples', 'Good structure'];
-    improvements = ['Could add more quantifiable results', 'Consider industry trends', 'Expand on challenges faced'];
-  } else if (finalScore >= 65) {
-    feedback = 'Good response with solid content. Shows understanding of the topic but could benefit from more specific examples and deeper analysis.';
-    strengths = ['Good understanding', 'Relevant content', 'Adequate communication'];
-    improvements = ['Add specific examples', 'Provide more detail', 'Improve clarity'];
-  } else if (finalScore >= 50) {
-    feedback = 'Adequate response but needs improvement in depth and clarity. Consider providing more specific examples and elaborating on key points.';
-    strengths = ['Basic understanding', 'Attempted to answer', 'Some relevant points'];
-    improvements = ['Provide specific examples', 'Improve clarity', 'Add more depth'];
-  } else {
-    feedback = 'Response needs significant improvement. Focus on directly addressing the question with specific examples and clearer communication.';
-    strengths = ['Attempted response', 'Some effort shown'];
-    improvements = ['Address question directly', 'Provide clear examples', 'Improve communication', 'Add relevant details'];
-  }
+  // Always indicate this is mock evaluation
+  feedback = `MOCK EVALUATION MODE: This is a simulated score (${finalScore}%) because OpenAI API is not configured. For real AI evaluation with GPT-4o, add VITE_OPENAI_API_KEY to your .env file.`;
+  strengths = ['Mock evaluation active', 'Audio recorded successfully'];
+  improvements = ['Configure OpenAI API key for real evaluation', 'Add VITE_OPENAI_API_KEY to .env file', 'Restart application after adding API key'];
   
   // Add mock transcript for display
-  response.transcript = `[Mock transcript - Audio duration: ${Math.round(duration)}s. Real transcript requires OpenAI API key. Add VITE_OPENAI_API_KEY to .env file for actual speech-to-text conversion.]`;
+  response.transcript = `[MOCK TRANSCRIPT - Audio duration: ${Math.round(duration)}s] This is simulated text. For real speech-to-text transcription, add VITE_OPENAI_API_KEY to your .env file and restart the application.`;
   
   return { score: finalScore, feedback, strengths, improvements };
 };

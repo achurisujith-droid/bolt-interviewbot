@@ -31,21 +31,15 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
       return;
     }
 
+    console.log('🎯 Starting evaluation for', totalResponses, 'responses');
+    console.log('🔑 OpenAI API Key available:', !!import.meta.env.VITE_OPENAI_API_KEY);
+
     for (let i = 0; i < updatedResponses.length; i++) {
       const response = updatedResponses[i];
       
-      // Check if response already has evaluation data (mock responses)
-      if (response.transcript && response.evaluation && response.evaluation.score) {
-        // Use existing mock evaluation data
-        updatedResponses[i] = {
-          ...response,
-          score: response.evaluation.score,
-          feedback: response.evaluation.feedback,
-          strengths: response.strengths || [],
-          improvements: response.improvements || []
-        };
-      } else if (response.audioBlob || response.transcript) {
+      if (response.audioBlob || response.transcript) {
         // Evaluate response with AI
+        console.log(`🎤 Evaluating response ${i + 1}/${totalResponses}`);
         try {
           const evaluation = await evaluateResponse(
             response, 
@@ -54,21 +48,25 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
             session.resumeAnalysis
           );
           
+          console.log(`✅ Response ${i + 1} evaluated:`, evaluation);
           updatedResponses[i] = {
             ...response,
             score: evaluation.score,
             feedback: evaluation.feedback,
             strengths: evaluation.strengths,
-            improvements: evaluation.improvements
+            improvements: evaluation.improvements,
+            evaluationMethod: 'GPT-4o Real AI'
           };
         } catch (error) {
+          console.error(`❌ Evaluation failed for response ${i + 1}:`, error);
           // Fallback to mock evaluation
           updatedResponses[i] = {
             ...response,
             score: Math.floor(Math.random() * 30) + 60,
             feedback: 'Response recorded successfully. AI evaluation unavailable.',
             strengths: ['Response provided'],
-            improvements: ['Consider providing more specific examples']
+            improvements: ['Consider providing more specific examples'],
+            evaluationMethod: 'Mock Evaluation (API Error)'
           };
         }
       } else {
@@ -78,7 +76,8 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
           score: 0,
           feedback: 'No response recorded',
           strengths: [],
-          improvements: ['Please ensure microphone is working and record a response']
+          improvements: ['Please ensure microphone is working and record a response'],
+          evaluationMethod: 'No Response'
         };
       }
 
@@ -90,6 +89,8 @@ export const EvaluationInterface: React.FC<EvaluationInterfaceProps> = ({
     const overallScore = validResponses.length > 0 
       ? calculateOverallScore(validResponses)
       : 0;
+    
+    console.log('📊 Final evaluation complete. Overall score:', overallScore);
     
     const updatedSession: InterviewSession = {
       ...session,

@@ -174,24 +174,54 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   };
 
   const handleEvaluationComplete = async (updatedSession: InterviewSession, certificate: any) => {
+    console.log('💾 Saving evaluation results to localStorage...');
+    console.log('📊 Session score:', updatedSession.score);
+    console.log('🏆 Certificate:', certificate);
+    
     // Save the session and certificate to localStorage like in admin
     const existingSessions = JSON.parse(localStorage.getItem('interviewSessions') || '[]');
     const existingCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
+    
+    // Check for duplicates before adding
+    const isDuplicateSession = existingSessions.some((s: any) => 
+      s.candidateName === updatedSession.candidateName && 
+      s.position === updatedSession.position &&
+      s.id !== updatedSession.id
+    );
+    
+    const isDuplicateCertificate = existingCertificates.some((c: any) => 
+      c.candidateName === certificate.candidateName && 
+      c.position === certificate.position &&
+      c.id !== certificate.id
+    );
     
     // Update or add the session
     const sessionIndex = existingSessions.findIndex((s: any) => s.id === updatedSession.id);
     if (sessionIndex >= 0) {
       existingSessions[sessionIndex] = updatedSession;
+      console.log('📝 Updated existing session');
     } else {
       existingSessions.push(updatedSession);
+      console.log('➕ Added new session');
     }
     
-    // Add the certificate
-    existingCertificates.push(certificate);
+    // Add the certificate only if not duplicate
+    if (!isDuplicateCertificate) {
+      existingCertificates.push(certificate);
+      console.log('🏆 Added new certificate');
+    } else {
+      console.log('⚠️ Duplicate certificate detected, not adding');
+    }
     
     // Save to localStorage
+    try {
     localStorage.setItem('interviewSessions', JSON.stringify(existingSessions));
     localStorage.setItem('certificates', JSON.stringify(existingCertificates));
+      console.log('✅ Data saved successfully');
+    } catch (error) {
+      console.error('❌ Failed to save data:', error);
+      alert('Warning: Failed to save interview data. Your results may be lost.');
+    }
     
     // Mark purchase as used
     if (selectedProduct) {
@@ -216,11 +246,12 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     setActiveTab('dashboard');
     
     // Show completion with download option
-    const downloadCert = confirm(`🎉 Interview completed! Score: ${updatedSession.score}%\n\nWould you like to download your detailed evaluation report now?`);
+    const downloadCert = confirm(`🎉 Interview completed!\n\nFinal Score: ${updatedSession.score}%\nEvaluation Method: ${certificate.evaluationMethod || 'GPT-4o AI'}\n\nWould you like to download your detailed evaluation report now?`);
     if (downloadCert) {
       try {
         const { downloadCertificate } = await import('../../utils/certificateGenerator');
         downloadCertificate(certificate, updatedSession);
+        console.log('📄 Certificate downloaded successfully');
       } catch (error) {
         console.error('Certificate download failed:', error);
         alert('❌ Failed to download certificate. You can download it later from the certificates section.');
