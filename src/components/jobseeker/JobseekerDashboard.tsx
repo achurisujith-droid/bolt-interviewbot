@@ -55,7 +55,10 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
         const userCerts = allCertificates.filter((cert: any) => 
           cert.candidateName === user.name || 
           cert.candidateEmail === user.email
-        );
+        ).map((cert: any) => ({
+          ...cert,
+          issueDate: new Date(cert.issueDate)
+        }));
         setUserCertificates(userCerts);
         console.log('📜 Loaded certificates for user:', userCerts.length);
       } catch (error) {
