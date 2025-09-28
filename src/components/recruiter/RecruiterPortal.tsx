@@ -5,15 +5,25 @@ import { Recruiter, ReferralEarning } from '../../types/products';
 interface RecruiterPortalProps {
   recruiter: Recruiter;
   onLogout: () => void;
+  onGenerateLink: (candidateEmail: string, position: string) => string;
 }
 
 export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
   recruiter,
-  onLogout
+  onLogout,
+  onGenerateLink
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [referralLink, setReferralLink] = useState('');
   const [earnings, setEarnings] = useState<ReferralEarning[]>([]);
+  const [candidateEmail, setCandidateEmail] = useState('');
+  const [candidatePosition, setCandidatePosition] = useState('');
+  const [generatedLinks, setGeneratedLinks] = useState<Array<{
+    email: string;
+    position: string;
+    link: string;
+    createdAt: Date;
+  }>>([]);
   const [stats, setStats] = useState({
     totalReferrals: 24,
     successfulInterviews: 18,
@@ -56,11 +66,53 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
       }
     ];
     setEarnings(mockEarnings);
+    
+    // Load generated links from localStorage
+    const savedLinks = localStorage.getItem(`recruiterLinks_${recruiter.id}`);
+    if (savedLinks) {
+      try {
+        const links = JSON.parse(savedLinks).map((l: any) => ({
+          ...l,
+          createdAt: new Date(l.createdAt)
+        }));
+        setGeneratedLinks(links);
+      } catch (error) {
+        console.error('Failed to load generated links:', error);
+      }
+    }
   }, [recruiter]);
+
+  // Save generated links to localStorage
+  useEffect(() => {
+    localStorage.setItem(`recruiterLinks_${recruiter.id}`, JSON.stringify(generatedLinks));
+  }, [generatedLinks, recruiter.id]);
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
     alert('✅ Referral link copied to clipboard!');
+  };
+
+  const handleGenerateInterviewLink = () => {
+    if (!candidateEmail || !candidatePosition) {
+      alert('Please enter both candidate email and position');
+      return;
+    }
+
+    const link = onGenerateLink(candidateEmail, candidatePosition);
+    const newLink = {
+      email: candidateEmail,
+      position: candidatePosition,
+      link,
+      createdAt: new Date()
+    };
+
+    setGeneratedLinks(prev => [newLink, ...prev]);
+    setCandidateEmail('');
+    setCandidatePosition('');
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(link);
+    alert(`✅ Interview link generated and copied!\n\nCandidate: ${candidateEmail}\nPosition: ${candidatePosition}`);
   };
 
   const renderDashboard = () => (
@@ -149,6 +201,41 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-3 gap-6">
+        {/* Generate Interview Link */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
+          <div className="flex items-center mb-4">
+            <div className="bg-blue-100 rounded-lg p-3 mr-4">
+              <Users className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-800">Generate Interview</h4>
+              <p className="text-gray-600 text-sm">Create direct links</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <input
+              type="email"
+              placeholder="candidate@email.com"
+              value={candidateEmail}
+              onChange={(e) => setCandidateEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Position (e.g., Software Developer)"
+              value={candidatePosition}
+              onChange={(e) => setCandidatePosition(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+            <button
+              onClick={handleGenerateInterviewLink}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm"
+            >
+              Generate & Copy Link
+            </button>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
           <div className="flex items-center mb-4">
             <div className="bg-blue-100 rounded-lg p-3 mr-4">
@@ -178,25 +265,42 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
             Contact Candidates
           </button>
         </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
-          <div className="flex items-center mb-4">
-            <div className="bg-purple-100 rounded-lg p-3 mr-4">
-              <BarChart3 className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-800">Analytics</h4>
-              <p className="text-gray-600 text-sm">Track performance</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveTab('analytics')}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-          >
-            View Analytics
-          </button>
-        </div>
       </div>
+
+      {/* Generated Links */}
+      {generatedLinks.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <h3 className="text-xl font-semibold text-gray-800 mb-6">Generated Interview Links</h3>
+          <div className="space-y-4">
+            {generatedLinks.slice(0, 10).map((linkData, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex-1">
+                  <div className="font-medium text-gray-800">{linkData.email}</div>
+                  <div className="text-sm text-gray-600">{linkData.position}</div>
+                  <div className="text-xs text-gray-500">{linkData.createdAt.toLocaleString()}</div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(linkData.link);
+                      alert('✅ Link copied to clipboard!');
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => window.open(linkData.link, '_blank')}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Test Link
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Earnings */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
@@ -321,6 +425,60 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
 
   const renderReferrals = () => (
     <div className="space-y-6">
+      {/* Interview Link Generator */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6">Generate Interview Links</h3>
+        
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Candidate Email
+              </label>
+              <input
+                type="email"
+                value={candidateEmail}
+                onChange={(e) => setCandidateEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="candidate@example.com"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Position
+              </label>
+              <input
+                type="text"
+                value={candidatePosition}
+                onChange={(e) => setCandidatePosition(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Software Developer"
+              />
+            </div>
+            
+            <button
+              onClick={handleGenerateInterviewLink}
+              disabled={!candidateEmail || !candidatePosition}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+            >
+              Generate Interview Link
+            </button>
+          </div>
+          
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h4 className="font-semibold text-blue-800 mb-3">How it works:</h4>
+            <ol className="text-sm text-blue-700 space-y-2">
+              <li>1. Enter candidate's email and position</li>
+              <li>2. System generates unique interview link</li>
+              <li>3. Link is automatically copied to clipboard</li>
+              <li>4. Send link to candidate via email/message</li>
+              <li>5. Earn {recruiter.commissionRate}% commission when they complete</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
       {/* Referral Tools */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h3 className="text-xl font-semibold text-gray-800 mb-6">Referral Tools</h3>
@@ -351,10 +509,16 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-semibold text-gray-800 mb-2">Email Template - Job Seekers</h4>
               <div className="bg-gray-50 p-3 rounded text-sm text-gray-600 mb-3">
-                "Hi [Name], I wanted to share an amazing AI interview platform that can help boost your career. 
-                Get professional evaluation and certificates from top-tier AI technology. Use my referral link: {referralLink}"
+                "Hi [Name], I wanted to share an amazing AI interview platform that can help boost your career. Get professional evaluation and certificates from top-tier AI technology. Use my referral link: {referralLink}"
               </div>
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-medium transition-colors">
+              <button 
+                onClick={() => {
+                  const template = `Hi [Name], I wanted to share an amazing AI interview platform that can help boost your career. Get professional evaluation and certificates from top-tier AI technology. Use my referral link: ${referralLink}`;
+                  navigator.clipboard.writeText(template);
+                  alert('✅ Email template copied to clipboard!');
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-medium transition-colors"
+              >
                 Copy Email Template
               </button>
             </div>
@@ -362,10 +526,16 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-semibold text-gray-800 mb-2">Social Media Post</h4>
               <div className="bg-gray-50 p-3 rounded text-sm text-gray-600 mb-3">
-                "🚀 Advance your career with AI-powered interviews! Get professional evaluation, detailed feedback, 
-                and certificates. Try it now: {referralLink} #CareerGrowth #AIInterview"
+                "🚀 Advance your career with AI-powered interviews! Get professional evaluation, detailed feedback, and certificates. Try it now: {referralLink} #CareerGrowth #AIInterview"
               </div>
-              <button className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-medium transition-colors">
+              <button 
+                onClick={() => {
+                  const template = `🚀 Advance your career with AI-powered interviews! Get professional evaluation, detailed feedback, and certificates. Try it now: ${referralLink} #CareerGrowth #AIInterview`;
+                  navigator.clipboard.writeText(template);
+                  alert('✅ Social media post copied to clipboard!');
+                }}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-medium transition-colors"
+              >
                 Copy Social Post
               </button>
             </div>
@@ -437,7 +607,7 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
                     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
                     { id: 'referrals', label: 'Referrals', icon: Users },
                     { id: 'earnings', label: 'Earnings', icon: DollarSign },
-                    { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+                    { id: 'links', label: 'Generated Links', icon: TrendingUp }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -482,11 +652,52 @@ export const RecruiterPortal: React.FC<RecruiterPortalProps> = ({
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'referrals' && renderReferrals()}
         {activeTab === 'earnings' && renderEarnings()}
-        {activeTab === 'analytics' && (
+        {activeTab === 'links' && (
           <div className="text-center py-12">
-            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-800 mb-2">Analytics Dashboard</h3>
-            <p className="text-gray-600">Detailed analytics and reporting coming soon</p>
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">Generated Interview Links</h3>
+              {generatedLinks.length === 0 ? (
+                <div>
+                  <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No interview links generated yet</p>
+                  <button
+                    onClick={() => setActiveTab('referrals')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
+                  >
+                    Generate Your First Link
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {generatedLinks.map((linkData, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium text-gray-800">{linkData.email}</div>
+                        <div className="text-sm text-gray-600">{linkData.position}</div>
+                        <div className="text-xs text-gray-500">{linkData.createdAt.toLocaleString()}</div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(linkData.link);
+                            alert('✅ Link copied!');
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={() => window.open(linkData.link, '_blank')}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Test
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
