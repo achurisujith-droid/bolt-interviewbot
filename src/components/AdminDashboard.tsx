@@ -412,9 +412,21 @@ Are you absolutely sure you want to continue?`;
                  });
                   
                   const missingSessions = completedSessions.filter(session => {
-                    return !existingCerts.some(cert => 
+                    return !existingCerts.some(cert => {
+                      const nameMatch = cert.candidateName === session.candidateName;
+                      const positionMatch = cert.position === session.position;
+                      const scoreMatch = Math.abs(cert.score - (session.score || 0)) < 5; // Allow 5% difference
+                      return nameMatch && positionMatch && scoreMatch;
+                    });
+                  });
+                  
+                  // Additional check: don't generate if we already have certificates for this session
+                  const filteredMissingSessions = missingSessions.filter(session => {
+                    const existingCount = existingCerts.filter(cert => 
                       cert.candidateName === session.candidateName && 
                       cert.position === session.position
+                    ).length;
+                    return existingCount === 0; // Only generate if NO certificates exist
                     );
                   });
                   
@@ -423,10 +435,10 @@ Are you absolutely sure you want to continue?`;
                    console.log(`📋 Missing cert for: ${session.candidateName} - ${session.position} - ${session.score}% (${session.interviewType || 'audio'})`);
                  });
                   
-                  if (missingSessions.length > 0) {
+                  if (filteredMissingSessions.length > 0) {
                     console.log('🔧 Generating missing certificates...');
                     
-                    const newCertificates = missingSessions.map(session => ({
+                    const newCertificates = filteredMissingSessions.map(session => ({
                       id: `cert-recovered-${session.id}`,
                       candidateName: session.candidateName,
                       position: session.position,
@@ -462,10 +474,15 @@ Are you absolutely sure you want to continue?`;
                    alert(message);
                     
                     setTimeout(() => window.location.reload(), 1000);
+                    console.log('✅ No missing certificates found');
+                    alert('✅ All completed sessions already have certificates. No duplicates generated.');
+                  }
+                } else {
                     return;
                   }
                 } catch (error) {
                   console.error('❌ Failed to generate missing certificates:', error);
+                  alert('❌ Failed to check for missing certificates. Check console for details.');
                 }
               }
               
