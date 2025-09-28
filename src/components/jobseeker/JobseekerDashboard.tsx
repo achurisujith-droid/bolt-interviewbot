@@ -14,24 +14,24 @@ import { InterviewSession, InterviewResponse, ResumeAnalysis } from '../../types
 
 interface JobseekerDashboardProps {
   user: any;
+  sessions: InterviewSession[];
+  certificates: Certificate[];
   onLogout: () => void;
+  onStartInterview: (position: string) => void;
 }
 
 export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   user,
-  onLogout
+  sessions,
+  certificates,
+  onLogout,
+  onStartInterview
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedProduct, setSelectedProduct] = useState<InterviewProduct | null>(null);
   const [showScheduler, setShowScheduler] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [showResumeUpload, setShowResumeUpload] = useState(false);
-  const [showInterview, setShowInterview] = useState(false);
-  const [showEvaluation, setShowEvaluation] = useState(false);
-  const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
-  const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
   const [userPurchases, setUserPurchases] = useState<UserPurchase[]>([]);
-  const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
   const [userStats, setUserStats] = useState({
     completedInterviews: 3,
     averageScore: 78,
@@ -45,41 +45,11 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     { type: 'scheduled', title: 'Data Scientist Assessment', date: 'Tomorrow 2:00 PM' },
     { type: 'certificate', title: 'Frontend Developer Certificate', date: '1 week ago' }
   ]);
-  const [userCertificates, setUserCertificates] = useState<any[]>([]);
-
-  // Load user certificates from localStorage
-  useEffect(() => {
-    const loadCertificates = () => {
-      try {
-        const allCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
-        // Filter certificates for current user
-        const userCerts = allCertificates.filter((cert: any) => 
-          cert.candidateName === user.name || 
-          cert.candidateEmail === user.email
-        ).map((cert: any) => ({
-          ...cert,
-          issueDate: new Date(cert.issueDate)
-        }));
-        setUserCertificates(userCerts);
-        console.log('📜 Loaded certificates for user:', userCerts.length);
-      } catch (error) {
-        console.error('Failed to load certificates:', error);
-        setUserCertificates([]);
-      }
-    };
-
-    loadCertificates();
-    
-    // Listen for storage changes (when new certificates are added)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'certificates') {
-        loadCertificates();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [user.name, user.email]);
+  
+  // Filter certificates for current user
+  const userCertificates = certificates.filter(cert => 
+    cert.candidateName === user.name || cert.candidateEmail === user.email
+  );
 
   // Load user purchases from localStorage
   useEffect(() => {
@@ -115,7 +85,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     
     if (hasPurchased) {
       // Start interview directly
-      handleStartInterview(product);
+      onStartInterview(product.name);
     } else {
       // Show purchase modal
       setShowPurchaseModal(true);
@@ -137,185 +107,7 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
     setShowPurchaseModal(false);
     
     // Start interview immediately after purchase
-    handleStartInterview(selectedProduct!);
-  };
-
-  const handleStartInterview = (product: InterviewProduct) => {
-    // Check if resume is needed for personalized questions
-    if (!resumeAnalysis && product.resumeRequirements && product.resumeRequirements.length > 0) {
-      setShowResumeUpload(true);
-      return;
-    }
-    
-    // Create interview session
-    const session: InterviewSession = {
-      id: `session-${Date.now()}`,
-      candidateName: user.name,
-      candidateEmail: user.email,
-      position: product.name,
-      status: 'in-progress',
-      createdAt: new Date(),
-      responses: [],
-      resumeAnalysis: resumeAnalysis || undefined,
-      interviewType: product.type === 'video' ? 'video' : 'audio'
-    };
-    
-    setCurrentSession(session);
-    setShowInterview(true);
-  };
-
-  const handleResumeUploaded = async (resumeText: string) => {
-    setIsAnalyzingResume(true);
-    try {
-      if (!import.meta.env.VITE_OPENAI_API_KEY) {
-        console.log('⚠️ No OpenAI API key - skipping resume analysis');
-        alert('⚠️ OpenAI API key not configured.\n\nResume analysis requires an API key. You\'ll get standard interview questions instead.\n\nTo enable personalized questions, add VITE_OPENAI_API_KEY to your .env file.');
-        setShowResumeUpload(false);
-        if (selectedProduct) {
-          handleStartInterview(selectedProduct);
-        }
-      } else {
-        const analysis = await analyzeResume(resumeText, selectedProduct?.name || 'General Position');
-        setResumeAnalysis(analysis);
-        setShowResumeUpload(false);
-        
-        // Now start the interview with resume analysis
-        if (selectedProduct) {
-          handleStartInterview(selectedProduct);
-        }
-      }
-    } catch (error) {
-      console.error('Resume analysis failed:', error);
-      alert('Resume analysis failed. Starting with standard questions.');
-      setShowResumeUpload(false);
-      if (selectedProduct) {
-        handleStartInterview(selectedProduct);
-      }
-    } finally {
-      setIsAnalyzingResume(false);
-    }
-  };
-
-  const handleSkipResume = () => {
-    setShowResumeUpload(false);
-    if (selectedProduct) {
-      handleStartInterview(selectedProduct);
-    }
-  };
-
-  const handleInterviewComplete = (responses: InterviewResponse[]) => {
-    if (currentSession) {
-      const updatedSession: InterviewSession = {
-        ...currentSession,
-        responses,
-        status: 'completed',
-        completedAt: new Date()
-      };
-      
-      setCurrentSession(updatedSession);
-      setShowInterview(false);
-      setShowEvaluation(true);
-    }
-  };
-
-  const handleEvaluationComplete = async (updatedSession: InterviewSession, certificate: any) => {
-    console.log('💾 Saving evaluation results to localStorage...');
-    console.log('📊 Session score:', updatedSession.score);
-    console.log('🏆 Certificate:', certificate);
-    
-    // Save the session and certificate to localStorage like in admin
-    const existingSessions = JSON.parse(localStorage.getItem('interviewSessions') || '[]');
-    const existingCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
-    
-    // Check for duplicates before adding
-    const isDuplicateSession = existingSessions.some((s: any) => 
-      s.candidateName === updatedSession.candidateName && 
-      s.position === updatedSession.position &&
-      s.id !== updatedSession.id
-    );
-    
-    const isDuplicateCertificate = existingCertificates.some((c: any) => 
-      c.candidateName === certificate.candidateName && 
-      c.position === certificate.position &&
-      c.id !== certificate.id
-    );
-    
-    // Update or add the session
-    const sessionIndex = existingSessions.findIndex((s: any) => s.id === updatedSession.id);
-    if (sessionIndex >= 0) {
-      existingSessions[sessionIndex] = updatedSession;
-      console.log('📝 Updated existing session');
-    } else {
-      existingSessions.push(updatedSession);
-      console.log('➕ Added new session');
-    }
-    
-    // Add the certificate only if not duplicate
-    if (!isDuplicateCertificate) {
-      existingCertificates.push(certificate);
-      console.log('🏆 Added new certificate');
-    } else {
-      console.log('⚠️ Duplicate certificate detected, not adding');
-    }
-    
-    // Save to localStorage
-    try {
-    localStorage.setItem('interviewSessions', JSON.stringify(existingSessions));
-    localStorage.setItem('certificates', JSON.stringify(existingCertificates));
-      console.log('✅ Data saved successfully');
-    } catch (error) {
-      console.error('❌ Failed to save data:', error);
-      alert('Warning: Failed to save interview data. Your results may be lost.');
-    }
-    
-    // Mark purchase as used
-    if (selectedProduct) {
-      setUserPurchases(prev => prev.map(purchase => 
-        purchase.productId === selectedProduct.id && purchase.status === 'active'
-          ? { ...purchase, status: 'used', usedAt: new Date(), sessionId: updatedSession.id }
-          : purchase
-      ));
-    }
-    
-    // Update user stats
-    setUserStats(prev => ({
-      ...prev,
-      completedInterviews: prev.completedInterviews + 1,
-      certificatesEarned: prev.certificatesEarned + 1
-    }));
-    
-    // Reload certificates to show the new one
-    const loadCertificates = () => {
-      try {
-        const allCertificates = JSON.parse(localStorage.getItem('certificates') || '[]');
-        const userCerts = allCertificates.filter((cert: any) => 
-          cert.candidateName === user.name || 
-          cert.candidateEmail === user.email
-        );
-        setUserCertificates(userCerts);
-      } catch (error) {
-        console.error('Failed to reload certificates:', error);
-      }
-    };
-    loadCertificates();
-    
-    // Reset state
-    setShowEvaluation(false);
-    setCurrentSession(null);
-    setSelectedProduct(null);
-    setActiveTab('dashboard');
-    
-    // Show completion with download option
-    const downloadCert = confirm(`🎉 Interview completed!\n\nFinal Score: ${updatedSession.score}%\nEvaluation Method: ${certificate.evaluationMethod || 'GPT-4o AI'}\n\nWould you like to download your detailed evaluation report now?`);
-    if (downloadCert) {
-      try {
-        downloadCertificate(certificate, updatedSession);
-        console.log('📄 Certificate downloaded successfully');
-      } catch (error) {
-        console.error('Certificate download failed:', error);
-        alert('❌ Failed to download certificate. You can download it later from the certificates section.');
-      }
-    }
+    onStartInterview(selectedProduct!.name);
   };
 
   const handleSchedule = (schedule: Omit<InterviewSchedule, 'id' | 'createdAt'>) => {
@@ -329,54 +121,8 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
   const handleStartNow = (product: InterviewProduct) => {
     setShowScheduler(false);
     setSelectedProduct(null);
-    handleStartInterview(product);
+    onStartInterview(product.name);
   };
-
-  // Loading state for resume analysis
-  if (isAnalyzingResume) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Analyzing Your Resume</h2>
-          <p className="text-gray-600">AI is creating personalized questions for you...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Resume upload modal
-  if (showResumeUpload) {
-    return (
-      <ResumeUpload
-        onResumeUploaded={handleResumeUploaded}
-        onSkip={handleSkipResume}
-      />
-    );
-  }
-
-  // Interview interface
-  if (showInterview && currentSession) {
-    return (
-      <InterviewInterface
-        sessionId={currentSession.id}
-        candidateName={currentSession.candidateName}
-        position={currentSession.position}
-        resumeAnalysis={currentSession.resumeAnalysis}
-        onComplete={handleInterviewComplete}
-      />
-    );
-  }
-
-  // Evaluation interface
-  if (showEvaluation && currentSession) {
-    return (
-      <EvaluationInterface
-        session={currentSession}
-        onEvaluationComplete={handleEvaluationComplete}
-      />
-    );
-  }
 
   const renderDashboard = () => (
     <div className="space-y-8">
@@ -720,13 +466,13 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
                           console.log('📜 Certificate data:', certificate);
                           
                           try {
-                            const relatedSession = JSON.parse(localStorage.getItem('interviewSessions') || '[]')
-                              .find((s: any) => 
+                            const relatedSession = sessions.find(s => 
                                 s.candidateName === certificate.candidateName && 
                                 s.position === certificate.position
                               );
                             console.log('📊 Related session:', relatedSession);
                             console.log('📥 About to call downloadCertificate...');
+                            const { downloadCertificate } = await import('../../utils/certificateGenerator');
                             downloadCertificate(certificate, relatedSession);
                             console.log('✅ downloadCertificate completed');
                           } catch (error) {
@@ -775,13 +521,12 @@ export const JobseekerDashboard: React.FC<JobseekerDashboardProps> = ({
           onPurchase={handlePurchase}
           onStartTest={() => {
             setShowPurchaseModal(false);
-            handleStartInterview(selectedProduct);
+            onStartInterview(selectedProduct.name);
           }}
           onClose={() => {
             setShowPurchaseModal(false);
             setSelectedProduct(null);
           }}
-          resumeAnalysis={resumeAnalysis}
         />
       )}
     </div>
