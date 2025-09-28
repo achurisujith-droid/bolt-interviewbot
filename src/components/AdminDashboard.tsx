@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video, LogOut, TrendingUp, Clock, Star, FileText } from 'lucide-react';
+import { Users, BarChart3, Award, Calendar, Eye, Download, Upload, Trash2, Wifi, AlertTriangle, RefreshCw, Mic, Video } from 'lucide-react';
 import { InterviewSession, Certificate } from '../types/interview';
 import { InterviewLinkGenerator } from './InterviewLinkGenerator';
 import { OpenAITest } from './OpenAITest';
@@ -12,20 +12,17 @@ interface AdminDashboardProps {
   sessions: InterviewSession[];
   certificates: Certificate[];
   onGenerateLink: (candidateEmail: string, position: string) => string;
-  onLogout: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   sessions,
   certificates,
-  onGenerateLink,
-  onLogout
+  onGenerateLink
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null);
   const [showDetailedReport, setShowDetailedReport] = useState(false);
   const [showReEvaluation, setShowReEvaluation] = useState(false);
-  const [showTranscripts, setShowTranscripts] = useState(false);
 
   const completedSessions = sessions.filter(s => s.status === 'evaluated');
   const averageScore = completedSessions.length > 0 
@@ -57,11 +54,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleReEvaluate = (session: InterviewSession) => {
     setSelectedSession(session);
     setShowReEvaluation(true);
-  };
-
-  const handleViewTranscripts = (session: InterviewSession) => {
-    setSelectedSession(session);
-    setShowTranscripts(true);
   };
 
   const handleReEvaluationComplete = (updatedSession: InterviewSession, newCertificate: Certificate) => {
@@ -130,69 +122,44 @@ Are you absolutely sure you want to continue?`;
   };
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Enhanced Stats Cards with Gradients */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+        <div className="bg-blue-500 text-white rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Total Sessions</p>
-              <p className="text-3xl font-bold mb-1">{sessions.length}</p>
-              <div className="flex items-center text-blue-200 text-xs">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +12% this month
-              </div>
+              <p className="text-blue-100">Total Sessions</p>
+              <p className="text-3xl font-bold">{sessions.length}</p>
             </div>
-            <div className="bg-white bg-opacity-20 rounded-lg p-3">
-              <Users className="w-8 h-8 text-white" />
-            </div>
+            <Users className="w-8 h-8 text-blue-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+        <div className="bg-green-500 text-white rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium">Completed</p>
-              <p className="text-3xl font-bold mb-1">{completedSessions.length}</p>
-              <div className="flex items-center text-green-200 text-xs">
-                <Clock className="w-3 h-3 mr-1" />
-                {completedSessions.length > 0 ? 'Latest today' : 'None yet'}
-              </div>
+              <p className="text-green-100">Completed</p>
+              <p className="text-3xl font-bold">{completedSessions.length}</p>
             </div>
-            <div className="bg-white bg-opacity-20 rounded-lg p-3">
-              <BarChart3 className="w-8 h-8 text-white" />
-            </div>
+            <BarChart3 className="w-8 h-8 text-green-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+        <div className="bg-purple-500 text-white rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm font-medium">Certificates</p>
-              <p className="text-3xl font-bold mb-1">{certificates.length}</p>
-              <div className="flex items-center text-purple-200 text-xs">
-                <Award className="w-3 h-3 mr-1" />
-                Ready to download
-              </div>
+              <p className="text-purple-100">Certificates</p>
+              <p className="text-3xl font-bold">{certificates.length}</p>
             </div>
-            <div className="bg-white bg-opacity-20 rounded-lg p-3">
-              <Award className="w-8 h-8 text-white" />
-            </div>
+            <Award className="w-8 h-8 text-purple-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-orange-500 to-yellow-500 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+        <div className="bg-yellow-500 text-white rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-yellow-100 text-sm font-medium">Avg Score</p>
-              <p className="text-3xl font-bold mb-1">{averageScore}%</p>
-              <div className="flex items-center text-yellow-200 text-xs">
-                <Star className="w-3 h-3 mr-1" />
-                {averageScore >= 75 ? 'Excellent' : averageScore >= 60 ? 'Good' : 'Improving'}
-              </div>
+              <p className="text-yellow-100">Avg Score</p>
+              <p className="text-3xl font-bold">{averageScore}%</p>
             </div>
-            <div className="bg-white bg-opacity-20 rounded-lg p-3">
-              <BarChart3 className="w-8 h-8 text-white" />
-            </div>
+            <BarChart3 className="w-8 h-8 text-yellow-200" />
           </div>
         </div>
       </div>
@@ -577,33 +544,264 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
         </div>
       </div>
 
-      {/* Recent Certificates Quick Access */}
-      {certificates.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Certificates</h3>
-          <div className="space-y-3">
-            {certificates
-              .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
-              .slice(0, 3)
-              .map(cert => {
-                const relatedSession = sessions.find(s => 
-                  s.candidateName === cert.candidateName && 
-                  s.position === cert.position
-                );
-                return (
-                  <div key={cert.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium text-gray-800">{cert.candidateName}</div>
-                      <div className="text-sm text-gray-600">{cert.position} • {cert.score}% • {cert.issueDate.toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">Certificate: {cert.certificateNumber}</div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        try {
-                          downloadCertificate(cert, relatedSession);
-                          alert('✅ Certificate downloaded successfully!');
-                        } catch (error) {
-                          console.error('Certificate download failed:', error);
-                          alert('❌ Failed to download certificate. Please try again.');
+      {/* Modals */}
+      {showDetailedReport && selectedSession && (
+        <DetailedEvaluationReport
+          session={selectedSession}
+          certificate={certificates.find(c => c.candidateName === selectedSession.candidateName && c.position === selectedSession.position)}
+          onClose={() => {
+            setShowDetailedReport(false);
+            setSelectedSession(null);
+          }}
+        />
+      )}
+
+      {showReEvaluation && selectedSession && (
+        <ReEvaluationInterface
+          session={selectedSession}
+          onClose={() => {
+            setShowReEvaluation(false);
+            setSelectedSession(null);
+          }}
+          onReEvaluationComplete={handleReEvaluationComplete}
+        />
+      )}
+    </div>
+  );
+
+  const renderSessions = () => (
+    <div className="bg-white rounded-lg shadow-md">
+      <div className="p-6 border-b">
+        <h2 className="text-xl font-semibold text-gray-800">Interview Sessions</h2>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidate</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {sessions.map(session => (
+              <tr key={session.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{session.candidateName}</div>
+                    <div className="text-sm text-gray-500">{session.candidateEmail}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{session.position}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    session.status === 'evaluated' ? 'bg-green-100 text-green-800' :
+                    session.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                    session.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {session.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {session.score ? `${session.score}%` : '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {session.createdAt.toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button 
+                    onClick={() => handleViewDetails(session)}
+                    className="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
+                    title="View Detailed Report"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span className="ml-1 text-xs">Details</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      try {
+                        const relatedCertificate = certificates.find(c => 
+                          c.candidateName === session.candidateName && 
+                          c.position === session.position
+                        );
+                        if (relatedCertificate) {
+                          downloadCertificate(relatedCertificate, session);
+                          alert('✅ Detailed evaluation report downloaded successfully!');
+                        } else {
+                          alert('❌ No certificate found for this session. Complete the evaluation first.');
                         }
-                      }}
+                      } catch (error) {
+                        console.error('Evaluation report download failed:', error);
+                        alert('❌ Failed to download evaluation report. Please try again.');
+                      }
+                    }}
+                    className="text-green-600 hover:text-green-900 mr-3 flex items-center"
+                    title="Download Detailed Report"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="ml-1 text-xs">Download</span>
+                  </button>
+                  {session.status === 'evaluated' && session.responses.some(r => r.transcript) && (
+                    <button 
+                      onClick={() => handleReEvaluate(session)}
+                      className="text-purple-600 hover:text-purple-900 mr-3 flex items-center"
+                      title="Re-evaluate with Different Criteria"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="ml-1 text-xs">Re-evaluate</span>
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderCertificates = () => (
+    <div className="bg-white rounded-lg shadow-md">
+      <div className="p-6 border-b">
+        <h2 className="text-xl font-semibold text-gray-800">Issued Certificates</h2>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidate</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Certificate No</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {certificates.map(cert => (
+              <tr key={cert.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {cert.candidateName}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{cert.position}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`text-sm font-medium ${
+                    cert.score >= 80 ? 'text-green-600' :
+                    cert.score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {cert.score}%
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                  {cert.certificateNumber}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {cert.issueDate.toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button 
+                    onClick={() => {
+                      try {
+                        const relatedSession = sessions.find(s => 
+                          s.candidateName === cert.candidateName && 
+                          s.position === cert.position
+                        );
+                        downloadCertificate(cert, relatedSession);
+                        alert('Detailed Evaluation Report downloaded successfully!');
+                      } catch (error) {
+                        console.error('Evaluation report download failed:', error);
+                        alert('Failed to download evaluation report. Please try again.');
+                      }
+                    }}
+                    className="text-green-600 hover:text-green-900 flex items-center"
+                    title="Download Detailed Evaluation Report"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="ml-1 text-xs">Report</span>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+          <p className="text-gray-600">Manage interviews and monitor candidate performance</p>
+        </div>
+        
+        <div className="mb-6">
+          <nav className="flex space-x-8">
+            {[
+              { id: 'overview', label: 'Overview', icon: BarChart3 },
+              { id: 'sessions', label: 'Sessions', icon: Users },
+              { id: 'certificates', label: 'Certificates', icon: Award },
+              { id: 'test-api', label: 'Test API', icon: Wifi },
+              { id: 'methods', label: 'Interview Methods', icon: Video }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeTab === tab.id
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <tab.icon className="w-4 h-4 mr-2" />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+        
+        <div>
+          {activeTab === 'overview' && renderOverview()}
+          {activeTab === 'sessions' && renderSessions()}
+          {activeTab === 'certificates' && renderCertificates()}
+          {activeTab === 'test-api' && <OpenAITest />}
+          {activeTab === 'methods' && <InterviewMethodComparison />}
+        </div>
+      </div>
+
+      {/* Detailed Evaluation Report Modal */}
+      {showDetailedReport && selectedSession && (
+        <DetailedEvaluationReport
+          session={selectedSession}
+          certificate={certificates.find(c => 
+            c.candidateName === selectedSession.candidateName && 
+            c.position === selectedSession.position
+          )}
+          onClose={() => {
+            setShowDetailedReport(false);
+            setSelectedSession(null);
+          }}
+        />
+      )}
+
+      {/* Re-evaluation Interface Modal */}
+      {showReEvaluation && selectedSession && (
+        <ReEvaluationInterface
+          session={selectedSession}
+          onClose={() => {
+            setShowReEvaluation(false);
+            setSelectedSession(null);
+          }}
+          onReEvaluationComplete={handleReEvaluationComplete}
+        />
+      )}
+    </div>
+  );
+};
