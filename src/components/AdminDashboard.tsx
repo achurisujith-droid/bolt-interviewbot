@@ -606,3 +606,4 @@ ${(recoveredSessions > 0 || recoveredCertificates > 0) ? 'Refresh the page to se
                           console.error('Certificate download failed:', error);
                           alert('❌ Failed to download certificate. Please try again.');
                         }
+                      }}
