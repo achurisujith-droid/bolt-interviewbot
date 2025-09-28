@@ -139,7 +139,20 @@ Be fair but thorough. Consider the position requirements and provide actionable 
        content = content.trim();
      }
       
-      const evaluation = JSON.parse(content);
+      let evaluation;
+      try {
+        evaluation = JSON.parse(content);
+      } catch (parseError) {
+        // Fallback: Extract JSON object between first { and last }
+        const firstBrace = content.indexOf('{');
+        const lastBrace = content.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const jsonSubstring = content.substring(firstBrace, lastBrace + 1);
+          evaluation = JSON.parse(jsonSubstring);
+        } else {
+          throw new Error('No valid JSON object found in response');
+        }
+      }
       
       const result = {
         score: Math.max(0, Math.min(100, evaluation.score)),
@@ -227,7 +240,20 @@ Make questions engaging and allow candidates to showcase their skills and experi
       content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
     
-    const questions = JSON.parse(content);
+    let questions;
+    try {
+      questions = JSON.parse(content);
+    } catch (parseError) {
+      // Fallback: Extract JSON array between first [ and last ]
+      const firstBracket = content.indexOf('[');
+      const lastBracket = content.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        const jsonSubstring = content.substring(firstBracket, lastBracket + 1);
+        questions = JSON.parse(jsonSubstring);
+      } else {
+        throw new Error('No valid JSON array found in response');
+      }
+    }
     
     return questions.map((q: any, index: number) => ({
       ...q,

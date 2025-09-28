@@ -500,7 +500,20 @@ Follow the custom instructions precisely and adjust your evaluation accordingly.
       content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
     
-    const evaluation = JSON.parse(content);
+    let evaluation;
+    try {
+      evaluation = JSON.parse(content);
+    } catch (parseError) {
+      // Fallback: Extract JSON object between first { and last }
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonSubstring = content.substring(firstBrace, lastBrace + 1);
+        evaluation = JSON.parse(jsonSubstring);
+      } else {
+        throw new Error('No valid JSON object found in response');
+      }
+    }
     
     return {
       score: Math.max(0, Math.min(100, evaluation.score)),
